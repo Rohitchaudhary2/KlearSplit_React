@@ -1,6 +1,6 @@
 # KlearSplit
 
-**KlearSplit** is a web application that consists of a client built with Angular and a server built with Node.js, Express, and Sequelize (for database handling). The application uses JWT-based authentication and includes role-based access control, as well as cookie handling for refresh tokens.
+**KlearSplit** is a web application that consists of a client built with React and a server built with Node.js, Express, and Sequelize (for database handling). The application uses JWT-based authentication and includes role-based access control, as well as cookie handling for refresh tokens.
 
 ## Table of Contents
 - [Technologies Used](#technologies-used)
@@ -8,7 +8,7 @@
   - [Prerequisites](#prerequisites)
   - [Cloning the Repository](#cloning-the-repository)
   - [Backend (Node.js)](#backend-nodejs)
-  - [Frontend (Angular)](#frontend-angular)
+  - [Frontend (Angular)](#frontend-react)
 - [Environment Variables](#environment-variables)
 
 ## Technologies Used
@@ -24,10 +24,9 @@
 - **bcrypt** for password hashing
 
 ### Frontend (Client):
-- **Angular** (standalone approach)
-- **Reactive Forms** and **HTTP Client**
-- **LocalStorage** for access token management
-- **Angular Interceptors** for attaching tokens to requests
+- **React**
+- **Axios**
+- **LCookies** for access token management
 
 ## Installation
 
@@ -37,14 +36,13 @@ Ensure you have the following installed on your system:
 - **Node.js** (v20)
 - **PostgreSQL**
 - **pgAdmin**
-- **Angular CLI** (v18 for frontend development)
 
 ### Cloning the Repository
 
 Clone this repository using the following command:
 
 ```bash
-git clone https://github.com/Rohitchaudhary2/KlearSplit.git
+git clone https://github.com/Rohitchaudhary2/KlearSplit_React.git
 cd KlearSplit
 ```
 
@@ -64,7 +62,7 @@ cd KlearSplit
 
    The backend server will run on `http://localhost:3000` by default.
    
-   The Angular application will run on `http://localhost:4200` by default.
+   The React application will run on `http://localhost:5173` by default.
 
 ## Environment Variables
 
