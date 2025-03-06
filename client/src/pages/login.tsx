@@ -1,4 +1,4 @@
-import { Google, Visibility, VisibilityOff } from "@mui/icons-material";
+import { Google, Lock, Person, Visibility, VisibilityOff } from "@mui/icons-material";
 import { Stack, TextField, Button, Typography, InputLabel, OutlinedInput, InputAdornment, IconButton, FormControl } from "@mui/material";
 import { useState } from "react";
 import { Link } from "react-router-dom";
@@ -45,12 +45,26 @@ const LoginPage = () => {
                                 fullWidth
                                 error={!!errors.email}
                                 helperText={errors.email}
+                                slotProps={{
+                                    input: {
+                                        startAdornment: (
+                                        <InputAdornment position="start">
+                                            <Person />
+                                        </InputAdornment>
+                                        ),
+                                    },
+                                }}
                             />
                             <FormControl sx={{ m: 1 }} variant="outlined" required>
                                 <InputLabel htmlFor="outlined-adornment-password">Password</InputLabel>
                                 <OutlinedInput
                                     id="outlined-adornment-password"
                                     type={showPassword ? 'text' : 'password'}
+                                    startAdornment={
+                                    <InputAdornment position="start">
+                                        <Lock />
+                                    </InputAdornment>
+                                    }
                                     endAdornment={
                                         <InputAdornment position="end">
                                             <IconButton

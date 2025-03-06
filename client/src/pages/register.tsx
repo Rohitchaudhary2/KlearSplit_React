@@ -1,7 +1,8 @@
-import { Google } from "@mui/icons-material";
-import { Stack, TextField, Button, Typography } from "@mui/material";
-import { useState } from "react";
+import { Email, Google, Lock, Person, Phone } from "@mui/icons-material";
+import { Stack, TextField, Button, Typography, InputAdornment } from "@mui/material";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 const RegisterPage = () => {
     const [signupInfo, setSignupInfo] = useState({
@@ -13,14 +14,22 @@ const RegisterPage = () => {
     const [stage, setStage] = useState("signup");
     const [otp, setOtp] = useState("");
     const [errors, setErrors] = useState({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
-        username: '',
+        phone: '',
         otp: ''
     });
     const [isSignUpDisabled, setIsSignUpDisabled] = useState(true);
 
-    const handleSubmit = () => {}
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        toast.success('Otp verified');
+    }
+
+    const onChange = (key: string, value: string) => {
+        setSignupInfo({...signupInfo, [key]: value});
+    }
     
     return (
         <>
@@ -35,20 +44,38 @@ const RegisterPage = () => {
                             variant="outlined"
                             name="firstName"
                             value={signupInfo.firstName}
-                            // onChange={onChange}
+                            onChange={(e) => onChange("firstName", e.target.value)}
                             fullWidth
-                            error={!!errors.name}
-                            helperText={errors.name}
+                            error={!!errors.firstName}
+                            helperText={errors.firstName}
+                            slotProps={{
+                                input: {
+                                  startAdornment: (
+                                    <InputAdornment position="start">
+                                      <Person />
+                                    </InputAdornment>
+                                  ),
+                                },
+                              }}
                         />
                         <TextField
                             label="Last Name"
                             variant="outlined"
                             name="lastName"
                             value={signupInfo.lastName}
-                            // onChange={onChange}
+                            onChange={(e) => onChange("lastName", e.target.value)}
                             fullWidth
-                            error={!!errors.name}
-                            helperText={errors.name}
+                            error={!!errors.lastName}
+                            helperText={errors.lastName}
+                            slotProps={{
+                                input: {
+                                  startAdornment: (
+                                    <InputAdornment position="start">
+                                      <Person />
+                                    </InputAdornment>
+                                  ),
+                                },
+                              }}
                         />
                         <TextField
                             label="Email"
@@ -56,22 +83,39 @@ const RegisterPage = () => {
                             variant="outlined"
                             name="email"
                             value={signupInfo.email}
-                            // onChange={onChange}
+                            onChange={(e) => onChange("email", e.target.value)}
                             fullWidth
-                            error={!!errors.name}
-                            helperText={errors.name}
+                            error={!!errors.email}
+                            helperText={errors.email}
+                            slotProps={{
+                                input: {
+                                  startAdornment: (
+                                    <InputAdornment position="start">
+                                      <Email />
+                                    </InputAdornment>
+                                  ),
+                                },
+                              }}
                         />
                         <TextField
                             label="Phone"
                             variant="outlined"
                             name="phone"
                             value={signupInfo.phone}
-                            // onChange={onChange}
+                            onChange={(e) => onChange("phone", e.target.value)}
                             fullWidth
-                            error={!!errors.name}
-                            helperText={errors.name}
+                            error={!!errors.phone}
+                            helperText={errors.phone}
+                            slotProps={{
+                                input: {
+                                  startAdornment: (
+                                    <InputAdornment position="start">
+                                      <Phone />
+                                    </InputAdornment>
+                                  ),
+                                },
+                              }}
                         />   
-
                         {
                             stage === 'otp' &&
                             <TextField
@@ -82,11 +126,20 @@ const RegisterPage = () => {
                             value={otp}
                             // onChange={onChange}
                             fullWidth
-                            error={!!errors.name}
-                            helperText={errors.name}
+                            error={!!errors.otp}
+                            helperText={errors.otp}
+                            slotProps={{
+                                input: {
+                                  startAdornment: (
+                                    <InputAdornment position="start">
+                                      <Lock />
+                                    </InputAdornment>
+                                  ),
+                                },
+                              }}
                         /> 
                         }    
-                        <Button variant="contained" disabled={isSignUpDisabled}>Send Otp</Button>
+                        <Button variant="contained" type="submit" disabled={isSignUpDisabled}>Send Otp</Button>
                         <div className="flex items-center mt-4">
                             <div className="flex-grow border-t" style={{ border: '1px solid rgba(51, 60, 77, 0.6)' }}></div>
                             <span className="mx-2">OR</span>
