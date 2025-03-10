@@ -1,9 +1,15 @@
 import { Google, Lock, Person, Visibility, VisibilityOff } from "@mui/icons-material";
-import { Stack, TextField, Button, Typography, InputLabel, OutlinedInput, InputAdornment, IconButton, FormControl } from "@mui/material";
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Stack, TextField, Button, Typography, InputAdornment, IconButton } from "@mui/material";
+import axios from "axios";
+import React, { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { login } from "../store/authSlice";
 
 const LoginPage = () => {
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
     const [loginInfo, setLoginInfo] = useState({
         email: '',
         password: ''
@@ -12,11 +18,41 @@ const LoginPage = () => {
         email: '',
         password: ''
     });
-    const [isLoginDisabled, setIsLoginDisabled] = useState(true);
+    const validateField = (name: string, value: string) => {
+        let errorMsg = "";
 
-    const handleSubmit = () => { }
+        switch (name) {
+            case "email":
+                if (!value) errorMsg = "Email is required";
+                else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+                    errorMsg = "Invalid email format";
+                break;
+            case "password":
+                if(!value) errorMsg = "Password is required";
+                break;
+        }
+        return errorMsg;
+    };
+    const [isLoginDisabled, setIsLoginDisabled] = useState(true);
+    const isValid = !Object.entries(loginInfo).every(([key, value]) => !validateField(key, value));
+    useEffect(() => setIsLoginDisabled(isValid), [isValid]);
+    const handleSubmit = async(e: React.FormEvent) => {
+        e.preventDefault();
+        const res = await axios.post("http://localhost:3000/api/auth/login", loginInfo)
+        if(!res.data.success) {
+            toast.error(res.data.message);
+        }
+        dispatch(login(res.data.data))
+        navigate("/dashboard");
+        toast.success(res.data.message);
+    }
 
     const [showPassword, setShowPassword] = useState(false);
+
+    const onChange = (key: string, value: string) => {
+        setLoginInfo((prev) => ({ ...prev, [key]: value }));
+        setErrors((prev) => ({ ...prev, [key]: validateField(key, value) }));
+    }
 
     const handleClickShowPassword = () => setShowPassword((show) => !show);
 
@@ -40,8 +76,9 @@ const LoginPage = () => {
                                 required
                                 variant="outlined"
                                 name="email"
-                                // value={signupInfo.name}
-                                // onChange={onChange}
+                                value={loginInfo.email}
+                                onChange={(e) => onChange("email", e.target.value.trim())}
+                                onBlur={(e) => onChange("email", e.target.value.trim())}
                                 fullWidth
                                 error={!!errors.email}
                                 helperText={errors.email}
@@ -55,40 +92,49 @@ const LoginPage = () => {
                                     },
                                 }}
                             />
-                            <FormControl sx={{ m: 1 }} variant="outlined" required>
-                                <InputLabel htmlFor="outlined-adornment-password">Password</InputLabel>
-                                <OutlinedInput
-                                    id="outlined-adornment-password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    startAdornment={
-                                    <InputAdornment position="start">
-                                        <Lock />
-                                    </InputAdornment>
+                            <TextField
+                                sx={{ m: 1 }}
+                                variant="outlined"
+                                required
+                                id="outlined-adornment-password"
+                                label="Password"
+                                type={showPassword ? 'text' : 'password'}
+                                value={loginInfo.password}
+                                error={!!errors.password}
+                                helperText={errors.password} // Ensure `errors.password` exists
+                                onChange={(e) => onChange("password", e.target.value.trim())}
+                                onBlur={(e) => onChange("password", e.target.value.trim())}
+                                fullWidth
+                                slotProps={{
+                                    input: {
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <Lock />
+                                            </InputAdornment>
+                                        ),
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    aria-label={showPassword ? 'hide the password' : 'display the password'}
+                                                    onClick={handleClickShowPassword}
+                                                    onMouseDown={handleMouseDownPassword}
+                                                    onMouseUp={handleMouseUpPassword}
+                                                    edge="end"
+                                                >
+                                                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        )
                                     }
-                                    endAdornment={
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                aria-label={
-                                                    showPassword ? 'hide the password' : 'display the password'
-                                                }
-                                                onClick={handleClickShowPassword}
-                                                onMouseDown={handleMouseDownPassword}
-                                                onMouseUp={handleMouseUpPassword}
-                                                edge="end"
-                                            >
-                                                {showPassword ? <VisibilityOff /> : <Visibility />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    }
-                                    label="Password"
-                                />
-                            </FormControl>
+                                }}
+                            />
+
                             <div className="mt-4 text-right">
                                 <Link to="/register" className="text-blue-600 hover:underline">
                                     Forgot your Password?
                                 </Link>
                             </div>
-                            <Button variant="contained" disabled={isLoginDisabled}>LOGIN</Button>
+                            <Button variant="contained" type="submit" disabled={isLoginDisabled}>LOGIN</Button>
                             <div className="flex items-center mt-4">
                                 <div className="flex-grow border-t" style={{ border: '1px solid rgba(51, 60, 77, 0.6)' }}></div>
                                 <span className="mx-2">OR</span>

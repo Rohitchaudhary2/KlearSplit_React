@@ -1,22 +1,26 @@
 import { Email, Google, Lock, Person, Phone } from "@mui/icons-material";
 import { Stack, TextField, Button, Typography, InputAdornment } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
+import { useDispatch } from "react-redux";
+import { login } from "../store/authSlice";
 
 const RegisterPage = () => {
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
     const [signupInfo, setSignupInfo] = useState({
-        firstName: '',
-        lastName: '',
+        first_name: '',
+        last_name: '',
         email: '',
         phone: ''
     });
     const [stage, setStage] = useState("signup");
     const [otp, setOtp] = useState("");
     const [errors, setErrors] = useState({
-        firstName: '',
-        lastName: '',
+        first_name: '',
+        last_name: '',
         email: '',
         phone: '',
         otp: ''
@@ -25,9 +29,10 @@ const RegisterPage = () => {
         let errorMsg = "";
 
         switch (name) {
-            case "firstName":
+            case "first_name":
                 if (!value) errorMsg = "First Name is required";
                 else if (value.length < 3) errorMsg = "Must be at least 3 characters";
+                else if (value.length > 50) errorMsg = "Must not be greater than 50 characters";
                 break;
 
             case "email":
@@ -36,8 +41,9 @@ const RegisterPage = () => {
                     errorMsg = "Invalid email format";
                 break;
 
-            case "lastName":
+            case "last_name":
                 if (value && value.length < 3) errorMsg = "Must be at least 3 characters";
+                else if (value.length > 50) errorMsg = "Must not be greater than 50 characters";
                 break;
 
             case "phone":
@@ -50,9 +56,6 @@ const RegisterPage = () => {
             case "otp":
                 if (value.length !== 6) errorMsg = "OTP must be of 6 digits."
                 break;
-
-            default:
-                break;
         }
 
         return errorMsg;
@@ -62,9 +65,30 @@ const RegisterPage = () => {
     const isValid = !Object.entries(signupInfo).every(([key, value]) => !validateField(key, value));
     useEffect(() => setIsSignUpDisabled(isValid), [isValid])
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async(e: React.FormEvent) => {
         e.preventDefault();
-        toast.success('Otp verified');
+        switch(stage) {
+            case "signup":
+                const res = await axios.post("http://localhost:3000/api/users/verify", signupInfo)
+                if(!res.data.success) {
+                    toast.error(res.data.message);
+                }
+                
+                setStage("otp");
+                toast.success(res.data.message);
+                break;
+            case "otp": {
+                const res = await axios.post("http://localhost:3000/api/users/register", { ...signupInfo, "otp": otp})
+                if(!res.data.success) {
+                    toast.error(res.data.message);
+                }
+                dispatch(login(res.data.data))
+                navigate("/dashboard");
+                toast.success(res.data.message);
+                break;
+            }
+        }
+        
     }
 
     const onChange = (key: string, value: string) => {
@@ -97,13 +121,13 @@ const RegisterPage = () => {
                                 label="First Name"
                                 required
                                 variant="outlined"
-                                name="firstName"
-                                value={signupInfo.firstName}
-                                onChange={(e) => onChange("firstName", e.target.value)}
-                                onBlur={(e) => onChange("firstName", e.target.value.trim())}
+                                name="first_name"
+                                value={signupInfo.first_name}
+                                onChange={(e) => onChange("first_name", e.target.value)}
+                                onBlur={(e) => onChange("first_name", e.target.value.trim())}
                                 fullWidth
-                                error={!!errors.firstName}
-                                helperText={errors.firstName}
+                                error={!!errors.first_name}
+                                helperText={errors.first_name}
                                 slotProps={{
                                     input: {
                                         startAdornment: (
@@ -117,13 +141,13 @@ const RegisterPage = () => {
                             <TextField
                                 label="Last Name"
                                 variant="outlined"
-                                name="lastName"
-                                value={signupInfo.lastName}
-                                onChange={(e) => onChange("lastName", e.target.value)}
-                                onBlur={(e) => onChange("lastName", e.target.value.trim())}
+                                name="last_name"
+                                value={signupInfo.last_name}
+                                onChange={(e) => onChange("last_name", e.target.value)}
+                                onBlur={(e) => onChange("last_name", e.target.value.trim())}
                                 fullWidth
-                                error={!!errors.lastName}
-                                helperText={errors.lastName}
+                                error={!!errors.last_name}
+                                helperText={errors.last_name}
                                 slotProps={{
                                     input: {
                                         startAdornment: (
