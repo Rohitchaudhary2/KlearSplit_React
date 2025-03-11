@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { login } from "../store/authSlice";
+import CustomDialog from "../components/base/customModal";
 
 const RegisterPage = () => {
     const navigate = useNavigate();
@@ -64,6 +65,7 @@ const RegisterPage = () => {
     const [isSignUpDisabled, setIsSignUpDisabled] = useState(true);
     const isValid = !Object.entries(signupInfo).every(([key, value]) => !validateField(key, value));
     useEffect(() => setIsSignUpDisabled(isValid), [isValid])
+    const [dialogOpen, setDialogOpen] = useState(false);
 
     const handleSubmit = async(e: React.FormEvent) => {
         e.preventDefault();
@@ -78,7 +80,7 @@ const RegisterPage = () => {
                 toast.success(res.data.message);
                 break;
             case "otp": {
-                const res = await axios.post("http://localhost:3000/api/users/register", { ...signupInfo, "otp": otp})
+                const res = await axios.post("http://localhost:3000/api/users/register", { ...signupInfo, "otp": otp}, {withCredentials: true})
                 if(!res.data.success) {
                     toast.error(res.data.message);
                 }
@@ -110,8 +112,25 @@ const RegisterPage = () => {
         }
     }
 
+    const handleWrongEmail = () => {
+        setDialogOpen(true);
+    }
+
+    const handleDialogClose = (value: boolean) => {
+        setDialogOpen(false);
+        if(value) setStage("signup")
+    }
+
+    const handleGoogleSignup = () => {
+        const newWindow = window.open("http://localhost:3000/api/auth/google", "_self");
+        if (newWindow) {
+        newWindow.opener = null; // Ensures no link between the parent and the new window
+        }
+    }
+
     return (
         <>
+            <CustomDialog open={dialogOpen} onClose={handleDialogClose} title="Confirmation" message={`Are you sure entered email "${signupInfo.email} wrong?"`}/>
             <div className="flex justify-center min-h-screen items-center w-full md:w-6/7 mx-auto grid grid-cols-10 p-10 rounded-sm">
                 <div className="md:col-span-5 col-span-10 h-full bg-[#D1F8EF] shadow-2xl rounded-lg md:rounded-l-lg md:rounded-r-none p-6 items-center content-center">
                     <Typography variant="h4" align="center" color="primary" className="pb-7" sx={{ fontWeight: 700 }}>KLEARSPLIT</Typography>
@@ -180,6 +199,14 @@ const RegisterPage = () => {
                                     },
                                 }}
                             />
+                            {
+                                stage === "otp" && 
+                                <div className="mt-4 text-right">
+                                    <p onClick={handleWrongEmail} className="text-blue-600 hover:underline hover:cursor-pointer">
+                                        Wrong Email?
+                                    </p>
+                                </div>
+                            }
                             <TextField
                                 label="Phone"
                                 variant="outlined"
@@ -239,7 +266,7 @@ const RegisterPage = () => {
                                 startIcon={<Google />}
                                 sx={{ padding: 2 }}
                                 className="mt-4 text-white border-white"
-                            // onClick={handleGoogleLogin}
+                            onClick={handleGoogleSignup}
                             >
                                 Sign in with Google
                             </Button>

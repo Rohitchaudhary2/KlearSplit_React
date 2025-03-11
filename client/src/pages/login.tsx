@@ -38,7 +38,7 @@ const LoginPage = () => {
     useEffect(() => setIsLoginDisabled(isValid), [isValid]);
     const handleSubmit = async(e: React.FormEvent) => {
         e.preventDefault();
-        const res = await axios.post("http://localhost:3000/api/auth/login", loginInfo)
+        const res = await axios.post("http://localhost:3000/api/auth/login", loginInfo, { withCredentials: true})
         if(!res.data.success) {
             toast.error(res.data.message);
         }
@@ -63,6 +63,13 @@ const LoginPage = () => {
     const handleMouseUpPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
     };
+
+    const handleGoogleSignin = () => {
+        const newWindow = window.open("http://localhost:3000/api/auth/google", "_self");
+        if (newWindow) {
+        newWindow.opener = null; // Ensures no link between the parent and the new window
+        }
+    }
 
     return (
         <>
@@ -146,7 +153,7 @@ const LoginPage = () => {
                                 startIcon={<Google />}
                                 sx={{ padding: 2 }}
                                 className="mt-4 text-white border-white"
-                            // onClick={handleGoogleLogin}
+                                onClick={handleGoogleSignin}
                             >
                                 Sign in with Google
                             </Button>
