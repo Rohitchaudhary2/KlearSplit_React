@@ -7,6 +7,8 @@ import { toast } from 'sonner'
 import { useDispatch, useSelector } from 'react-redux'
 import { login, logout } from './store/authSlice'
 import { RootState } from './store'
+import { Box } from '@mui/material'
+import HashLoader from "react-spinners/ClipLoader";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,16 @@ function App() {
   if(loading) {
     return (
       <>
-        <h1>Loading...</h1>
+        <Box className="min-h-screen flex justify-center gap-4 items-center">
+        <Box className="hidden md:flex w-1/2 text-white flex-col bg-no-repeat bg-contain bg-center">
+          <h1 className="font-protest font-bold text-6xl text-end text-blue-400">
+            KLEARSPLIT
+          </h1>
+        </Box>
+        <Box className="grow">
+          <HashLoader color="#209bff" size={100} />
+        </Box>
+      </Box>
       </>
     )
   }

@@ -5,7 +5,8 @@ import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { login } from "../store/authSlice";
+import { login } from "../../../store/authSlice";
+import { API_URLS } from "../../../constants/apiUrls";
 
 const LoginPage = () => {
     const navigate = useNavigate();
@@ -38,7 +39,7 @@ const LoginPage = () => {
     useEffect(() => setIsLoginDisabled(isValid), [isValid]);
     const handleSubmit = async(e: React.FormEvent) => {
         e.preventDefault();
-        const res = await axios.post("http://localhost:3000/api/auth/login", loginInfo, { withCredentials: true})
+        const res = await axios.post(API_URLS.login, loginInfo, { withCredentials: true})
         if(!res.data.success) {
             toast.error(res.data.message);
         }
@@ -65,7 +66,7 @@ const LoginPage = () => {
     };
 
     const handleGoogleSignin = () => {
-        const newWindow = window.open("http://localhost:3000/api/auth/google", "_self");
+        const newWindow = window.open(API_URLS.googleAuth, "_self");
         if (newWindow) {
         newWindow.opener = null; // Ensures no link between the parent and the new window
         }

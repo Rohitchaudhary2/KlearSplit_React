@@ -5,8 +5,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import axios from "axios";
 import { useDispatch } from "react-redux";
-import { login } from "../store/authSlice";
-import CustomDialog from "../components/base/customModal";
+import { login } from "../../../store/authSlice";
+import CustomDialog from "../../../components/base/customModal";
+import { API_URLS } from "../../../constants/apiUrls";
 
 const RegisterPage = () => {
     const navigate = useNavigate();
@@ -71,7 +72,7 @@ const RegisterPage = () => {
         e.preventDefault();
         switch(stage) {
             case "signup":
-                const res = await axios.post("http://localhost:3000/api/users/verify", signupInfo)
+                const res = await axios.post(API_URLS.verify, signupInfo)
                 if(!res.data.success) {
                     toast.error(res.data.message);
                 }
@@ -80,7 +81,7 @@ const RegisterPage = () => {
                 toast.success(res.data.message);
                 break;
             case "otp": {
-                const res = await axios.post("http://localhost:3000/api/users/register", { ...signupInfo, "otp": otp}, {withCredentials: true})
+                const res = await axios.post(API_URLS.register, { ...signupInfo, "otp": otp}, {withCredentials: true})
                 if(!res.data.success) {
                     toast.error(res.data.message);
                 }
@@ -122,7 +123,7 @@ const RegisterPage = () => {
     }
 
     const handleGoogleSignup = () => {
-        const newWindow = window.open("http://localhost:3000/api/auth/google", "_self");
+        const newWindow = window.open(API_URLS.googleAuth, "_self");
         if (newWindow) {
         newWindow.opener = null; // Ensures no link between the parent and the new window
         }

@@ -58,7 +58,7 @@ authRouter.get("/google/callback", (req, res, next) => {
         "sameSite": "strict",
         "maxAge": 10 * 24 * 60 * 60 * 1000
       })
-      .redirect(`http://localhost:5173/dashboard?id=${userData.user.user_id}`);
+      .redirect(`http://localhost:5173/dashboard`);
   })(req, res, next);
 });
 

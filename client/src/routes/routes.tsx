@@ -1,10 +1,12 @@
 import { createBrowserRouter } from 'react-router-dom';
 import UnprotectedRoute from '../components/base/unprotectedRoute';
 import HomePage from '../pages/home';
-import RegisterPage from "../pages/register"
-import LoginPage from '../pages/login'
+import RegisterPage from "../pages/auth/register"
+import LoginPage from '../pages/auth/login/index'
 import ProtectedRoute from '../components/base/protectedRoute';
-import DashboardPage from '../pages/dashboard';
+import DashboardPage from '../pages/dashboard/index';
+import Friendspage from '../pages/friends/index';
+import GroupsPage from '../pages/groups/index';
 
 const router = createBrowserRouter ([
     {
@@ -32,6 +34,14 @@ const router = createBrowserRouter ([
             {
                 path: 'dashboard',
                 element: <DashboardPage/>
+            },
+            {
+                path: 'friends',
+                element: <Friendspage/>
+            },
+            {
+                path: 'groups',
+                element: <GroupsPage/>
             }
         ]
     }
