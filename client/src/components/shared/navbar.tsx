@@ -14,6 +14,8 @@ import MenuItem from '@mui/material/MenuItem';
 import { Link, Outlet } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { logout } from '../../store/authSlice';
+import { API_URLS } from '../../constants/apiUrls';
+import axiosInstance from '../../utils/axiosInterceptor';
 
 const pages = ["Dashboard", 'Friends', 'Groups'];
 
@@ -37,7 +39,13 @@ function ResponsiveAppBar() {
     setAnchorElUser(null);
   };
 
-  const handleLogout = () => dispatch(logout());
+  const handleLogout = async() => {
+    const res = await axiosInstance.get(API_URLS.logout, {withCredentials: true});
+    if(!res) {
+      return;
+    }
+    dispatch(logout());
+  }
 
   return (
     <>
@@ -154,7 +162,7 @@ function ResponsiveAppBar() {
               onClose={handleCloseUserMenu}
             >
               <MenuItem onClick={handleCloseUserMenu}>
-                <div><Typography sx={{ textAlign: 'center' }}>Profile</Typography></div>
+                <Link to="/profile" ><Typography sx={{ textAlign: 'center' }}>Profile</Typography></Link>
               </MenuItem>
               <MenuItem onClick={handleCloseUserMenu}>
                 <div onClick={handleLogout} ><Typography sx={{ textAlign: 'center' }}>Logout</Typography></div>

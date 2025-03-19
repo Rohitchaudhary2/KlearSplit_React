@@ -3,11 +3,11 @@ import { Stack, TextField, Button, Typography, InputAdornment } from "@mui/mater
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import axios from "axios";
 import { useDispatch } from "react-redux";
 import { login } from "../../../store/authSlice";
 import CustomDialog from "../../../components/base/customModal";
 import { API_URLS } from "../../../constants/apiUrls";
+import axiosInstance from "../../../utils/axiosInterceptor";
 
 const RegisterPage = () => {
     const navigate = useNavigate();
@@ -72,7 +72,7 @@ const RegisterPage = () => {
         e.preventDefault();
         switch(stage) {
             case "signup":
-                const res = await axios.post(API_URLS.verify, signupInfo)
+                const res = await axiosInstance.post(API_URLS.verify, signupInfo)
                 if(!res.data.success) {
                     toast.error(res.data.message);
                 }
@@ -81,7 +81,7 @@ const RegisterPage = () => {
                 toast.success(res.data.message);
                 break;
             case "otp": {
-                const res = await axios.post(API_URLS.register, { ...signupInfo, "otp": otp}, {withCredentials: true})
+                const res = await axiosInstance.post(API_URLS.register, { ...signupInfo, "otp": otp}, {withCredentials: true})
                 if(!res.data.success) {
                     toast.error(res.data.message);
                 }

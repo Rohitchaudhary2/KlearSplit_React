@@ -1,8 +1,9 @@
-import { Box, CircularProgress, FormControl, MenuItem, Paper, Select, SelectChangeEvent, Stack, Typography } from "@mui/material"
+import { Box, FormControl, MenuItem, Paper, Select, SelectChangeEvent, Stack, Typography } from "@mui/material"
 import { useEffect, useRef, useState } from "react"
 import { PieChart, BarChart, axisClasses } from '@mui/x-charts';
-import axios from "axios";
 import { API_URLS } from "../../constants/apiUrls";
+import classes from "./index.module.css"
+import axiosInstance from "../../utils/axiosInterceptor";
 
 interface PieChartData {
     id: number,
@@ -38,7 +39,7 @@ const DashboardPage = () => {
             }
         };
         const getExpensesCount = async () => {
-            const data = await axios.get(API_URLS.expensesCount, { withCredentials: true });
+            const data = await axiosInstance.get(API_URLS.expensesCount, { withCredentials: true });
 
             setExpensesCount(data.data.data.map((value: number, index: number) => ({
                 id: index,
@@ -47,10 +48,10 @@ const DashboardPage = () => {
                 color: pieChartColors[index]
             })));
 
-            setLoaders((prev) => ({...prev, expenseCount: false}));
+            setLoaders((prev) => ({ ...prev, expenseCount: false }));
         }
         const getBalance = async () => {
-            const data = await axios.get(API_URLS.balanceAmounts, { withCredentials: true });
+            const data = await axiosInstance.get(API_URLS.balanceAmounts, { withCredentials: true });
 
             setBalanceAmounts(data.data.data.map((value: number, index: number) => ({
                 id: index,
@@ -59,10 +60,10 @@ const DashboardPage = () => {
                 color: ["#27AE60", "#E74C3C"][index]
             })));
             setBalanceAmount(data.data.data[0] - data.data.data[1]);
-            setLoaders((prev) => ({...prev, "balance": false}))
+            setLoaders((prev) => ({ ...prev, "balance": false }))
         }
         const getCashFlowFriends = async () => {
-            const data = await axios.get(API_URLS.cashFlowFriends, { withCredentials: true });
+            const data = await axiosInstance.get(API_URLS.cashFlowFriends, { withCredentials: true });
             const response: { amount: number; friend: string }[] = Object.values(data.data.data);
             setTopCashFlowPartners(response.map((val: { "amount": number, "friend": string }, index: number) => ({
                 id: index,
@@ -70,10 +71,10 @@ const DashboardPage = () => {
                 label: val.friend,
                 color: pieChartColors[index]
             })));
-            setLoaders((prev) => ({...prev, "cashFlowPartners": false}))
+            setLoaders((prev) => ({ ...prev, "cashFlowPartners": false }))
         }
         const getCashFlowGroups = async () => {
-            const data = await axios.get(API_URLS.cashFlowGroups, { withCredentials: true });
+            const data = await axiosInstance.get(API_URLS.cashFlowGroups, { withCredentials: true });
             const response: { amount: number; group: string }[] = Object.values(data.data.data);
             setTopCashFlowGroups(response.map((val: { "amount": number, "group": string }, index: number) => ({
                 id: index,
@@ -81,7 +82,7 @@ const DashboardPage = () => {
                 label: val.group,
                 color: pieChartColors[index]
             })));
-            setLoaders((prev) => ({...prev, "cashFlowGroups": false}))
+            setLoaders((prev) => ({ ...prev, "cashFlowGroups": false }))
         }
         getExpensesCount()
         getBalance()
@@ -100,9 +101,9 @@ const DashboardPage = () => {
     }, [])
     useEffect(() => {
         const getMonthlyexpenses = async () => {
-            const data = await axios.post(API_URLS.monthlyExpenses, { year }, { withCredentials: true });
+            const data = await axiosInstance.post(API_URLS.monthlyExpenses, { year }, { withCredentials: true });
             setMonthlyExpenses(data.data.data);
-            setLoaders((prev) => ({...prev, "monthlyExpenses": false}))
+            setLoaders((prev) => ({ ...prev, "monthlyExpenses": false }))
         }
         getMonthlyexpenses();
     }, [year])
@@ -114,24 +115,30 @@ const DashboardPage = () => {
             <Box className="flex flex-wrap gap-4 justify-center" p={3}>
                 <div className="grow" ref={firstDiv}>
                     <Paper sx={{ minHeight: 250, position: "relative" }} elevation={5}>
-                    {loaders.expenseCount && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            background: 'rgba(255, 255, 255, 1)',
-                            zIndex: 10,
-                        }}
-                    >
-                        <CircularProgress />
-                    </Box>
-                )}
+                        {loaders.expenseCount && (
+                            <Box
+                                sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    background: 'rgba(255, 255, 255, 1)',
+                                    zIndex: 10,
+                                }}
+                            >
+                                <section className={classes["dots-container"]}>
+                                    <div className={classes.dot}></div>
+                                    <div className={classes.dot}></div>
+                                    <div className={classes.dot}></div>
+                                    <div className={classes.dot}></div>
+                                    <div className={classes.dot}></div>
+                                </section>
+                            </Box>
+                        )}
                         <Stack sx={{ alignItems: "center" }}>
                             <Typography variant="h6" sx={{ paddingTop: 1, color: "#3674B5" }} >Number of Expenses by Amount Range</Typography>
                             <PieChart
@@ -156,7 +163,7 @@ const DashboardPage = () => {
                                         itemGap: 10,
                                         labelStyle: {
                                             fontSize: 10,
-                                            
+
                                         },
                                     }
                                 }}
@@ -166,24 +173,30 @@ const DashboardPage = () => {
                 </div>
                 <div className="grow">
                     <Paper sx={{ minHeight: 250, position: "relative" }} elevation={5}>
-                    {loaders.balance && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            background: 'rgba(255, 255, 255, 1)', 
-                            zIndex: 10,
-                        }}
-                    >
-                        <CircularProgress />
-                    </Box>
-                )}
+                        {loaders.balance && (
+                            <Box
+                                sx={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    background: 'rgba(255, 255, 255, 1)',
+                                    zIndex: 10,
+                                }}
+                            >
+                                <section className={classes["dots-container"]}>
+                                    <div className={classes.dot}></div>
+                                    <div className={classes.dot}></div>
+                                    <div className={classes.dot}></div>
+                                    <div className={classes.dot}></div>
+                                    <div className={classes.dot}></div>
+                                </section>
+                            </Box>
+                        )}
                         <Stack sx={{ alignItems: "center" }}>
                             <Typography variant="h6" sx={{ paddingTop: 1, color: (balanceAmount < 0) ? "#E74C3C" : "#27AE60" }} >Balance Amount: {balanceAmount}</Typography>
                             <PieChart
@@ -212,7 +225,7 @@ const DashboardPage = () => {
                                         itemGap: 10,
                                         labelStyle: {
                                             fontSize: 10,
-                                            
+
                                         },
                                     }
                                 }}
@@ -220,24 +233,30 @@ const DashboardPage = () => {
                         </Stack>
                     </Paper></div>
                 <div className="grow"><Paper sx={{ minHeight: 250, position: "relative" }} elevation={5}>
-                {loaders.cashFlowPartners && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            background: 'rgba(255, 255, 255, 1)',
-                            zIndex: 10,
-                        }}
-                    >
-                        <CircularProgress />
-                    </Box>
-                )}
+                    {loaders.cashFlowPartners && (
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                background: 'rgba(255, 255, 255, 1)',
+                                zIndex: 10,
+                            }}
+                        >
+                            <section className={classes["dots-container"]}>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                            </section>
+                        </Box>
+                    )}
                     <Stack sx={{ alignItems: "center" }}>
                         <Typography variant="h6" sx={{ paddingTop: 1, color: "#3674B5" }} >Top Cash Flow Partners</Typography>
 
@@ -263,7 +282,7 @@ const DashboardPage = () => {
                                     itemGap: 10,
                                     labelStyle: {
                                         fontSize: 10,
-                                        
+
                                     },
                                 }
                             }}
@@ -271,24 +290,30 @@ const DashboardPage = () => {
                     </Stack>
                 </Paper></div>
                 <div><Paper sx={{ minHeight: 250, position: "relative", minWidth: { width }, maxWidth: { width } }} elevation={5}>
-                {loaders.cashFlowGroups && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            background: 'rgba(255, 255, 255, 1)',
-                            zIndex: 10,
-                        }}
-                    >
-                        <CircularProgress />
-                    </Box>
-                )}
+                    {loaders.cashFlowGroups && (
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                background: 'rgba(255, 255, 255, 1)',
+                                zIndex: 10,
+                            }}
+                        >
+                            <section className={classes["dots-container"]}>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                            </section>
+                        </Box>
+                    )}
                     <Stack sx={{ alignItems: "center" }}>
                         <Typography variant="h6" sx={{ paddingTop: 1, color: "#3674B5" }} >Top Cash Flow Groups </Typography>
 
@@ -314,7 +339,7 @@ const DashboardPage = () => {
                                     itemGap: 10,
                                     labelStyle: {
                                         fontSize: 10,
-                                        
+
                                     },
                                 }
                             }}
@@ -322,24 +347,30 @@ const DashboardPage = () => {
                     </Stack>
                 </Paper></div>
                 <div className="flex-1"><Paper sx={{ minHeight: 250, position: "relative" }} elevation={5}>
-                {loaders.monthlyExpenses && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            background: 'rgba(255, 255, 255, 1)',
-                            zIndex: 10,
-                        }}
-                    >
-                        <CircularProgress />
-                    </Box>
-                )}
+                    {loaders.monthlyExpenses && (
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                background: 'rgba(255, 255, 255, 1)',
+                                zIndex: 10,
+                            }}
+                        >
+                            <section className={classes["dots-container"]}>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                                <div className={classes.dot}></div>
+                            </section>
+                        </Box>
+                    )}
                     <Stack sx={{ alignItems: "end" }}>
                         <div className="flex justify-center items-center">
                             <Typography variant="body2" sx={{ paddingTop: 1, color: "#3674B5" }} >Monthly Expenses for</Typography>
@@ -369,11 +400,13 @@ const DashboardPage = () => {
                                 sx: { ".MuiChartsAxis-line": { stroke: "#3674B5" }, ".MuiChartsAxis-tick": { stroke: "#3674B5" } }
                             }]}
                             {
-                                ...{sx: {
+                            ...{
+                                sx: {
                                     [`.${axisClasses.left} .${axisClasses.label}`]: {
-                                      transform: 'translate(-20px, 0)',
+                                        transform: 'translate(-20px, 0)',
                                     },
-                                  },}
+                                },
+                            }
                             }
                             margin={{ top: 10, bottom: 30, left: Math.max(...monthlyExpenses).toString().length * 10 + 30, right: 10 }}
                         />

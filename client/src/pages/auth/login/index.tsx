@@ -1,12 +1,12 @@
 import { Google, Lock, Person, Visibility, VisibilityOff } from "@mui/icons-material";
 import { Stack, TextField, Button, Typography, InputAdornment, IconButton } from "@mui/material";
-import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { login } from "../../../store/authSlice";
 import { API_URLS } from "../../../constants/apiUrls";
+import axiosInstance from "../../../utils/axiosInterceptor";
 
 const LoginPage = () => {
     const navigate = useNavigate();
@@ -39,7 +39,7 @@ const LoginPage = () => {
     useEffect(() => setIsLoginDisabled(isValid), [isValid]);
     const handleSubmit = async(e: React.FormEvent) => {
         e.preventDefault();
-        const res = await axios.post(API_URLS.login, loginInfo, { withCredentials: true})
+        const res = await axiosInstance.post(API_URLS.login, loginInfo, { withCredentials: true})
         if(!res.data.success) {
             toast.error(res.data.message);
         }

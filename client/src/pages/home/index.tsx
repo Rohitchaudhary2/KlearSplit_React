@@ -18,7 +18,7 @@ const HomePage = () => {
                 </div>
             </section>
 
-            <section className="container mx-auto my-12 px-4">
+            <section className="container mx-auto p-4">
                 <h2 className="text-center text-2xl font-bold mb-6">Key Features</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
                 <div className="p-6 bg-gray-100 rounded-lg shadow-md">

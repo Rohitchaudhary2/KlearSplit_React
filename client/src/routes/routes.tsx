@@ -5,8 +5,9 @@ import RegisterPage from "../pages/auth/register"
 import LoginPage from '../pages/auth/login/index'
 import ProtectedRoute from '../components/base/protectedRoute';
 import DashboardPage from '../pages/dashboard/index';
-import Friendspage from '../pages/friends/index';
-import GroupsPage from '../pages/groups/index';
+import Friendspage from '../pages/friends-groups/friends/index';
+import GroupsPage from '../pages/friends-groups/groups/index';
+import Profile from '../pages/profile';
 
 const router = createBrowserRouter ([
     {
@@ -42,6 +43,10 @@ const router = createBrowserRouter ([
             {
                 path: 'groups',
                 element: <GroupsPage/>
+            },
+            {
+                path: 'profile',
+                element: <Profile/>
             }
         ]
     }
