@@ -6,11 +6,13 @@ import MessageInput from "./input";
 import MessageItem from "./message";
 import ExpenseItem from "./expense";
 import Badge from '@mui/joy/Badge';
+import AddExpense from "./addExpense";
 
 const Friendspage = () => {
   const [activeButton, setActiveButton] = useState("friends");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messageContainer = useRef<HTMLDivElement | null>(null);
+  const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
 
   // Function to scroll to bottom
   const scrollToBottom = () => {
@@ -26,6 +28,8 @@ const Friendspage = () => {
   const onSend = (message: string) => {
     console.log(message);
   }
+  const handleAddExpensesClose = () => setAddExpenseDialogOpen(false);
+  const handleAddExpensesOpen = () => setAddExpenseDialogOpen(true);
   const expenses = [
     {
       expense_id: "exp123",
@@ -64,6 +68,7 @@ const Friendspage = () => {
   ];
   return (
     <>
+    <AddExpense open={addExpenseDialogOpen} handleAddExpensesClose={handleAddExpensesClose}/>
       <Box className="grid gap-4 grid-cols-4 h-[89.5vh]">
         <Box className="p-4 pe-0 flex flex-col flex-wrap h-full col-span-4 md:col-span-1" hidden={false} sx={{ backgroundColor: "#A1E3F9" }}>
           <Box className="pb-4">
@@ -159,7 +164,7 @@ const Friendspage = () => {
             <Box ref={messagesEndRef}/>
             </Box>
             <Divider />
-            <Box><MessageInput onSend={onSend} /></Box>
+            <Box><MessageInput handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
           </Stack>
           </Paper>
         </Box>

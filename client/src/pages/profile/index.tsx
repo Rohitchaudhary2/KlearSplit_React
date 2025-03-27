@@ -27,7 +27,11 @@ const Profile = () => {
         newPassword: '',
         confirmPassword: ''
     })
-    const [showPassword, setShowPassword] = useState(false);
+    const [showPassword, setShowPassword] = useState({
+        currentPassword: false,
+        newPassword: false,
+        confirmPassword: false
+    });
     const [isSaveChangesDisabled, setIsSaveChangesDisabled] = useState(true);
     const [isChangePasswordDisabled, setIsChangePasswordDisabled] = useState(true);
     const onChange = (key: string, value: string) => {
@@ -57,7 +61,7 @@ const Profile = () => {
         setPasswords((prev) => ({ ...prev, [key]: value }));
         setPasswordErrors((prev) => ({ ...prev, [key]: validatePasswordField(key, value) }));
     }
-    const handleClickShowPassword = () => setShowPassword((show) => !show);
+    const handleClickShowPassword = (key: ("currentPassword" | "newPassword" | "confirmPassword")) => setShowPassword((prev) => ({...prev, [key]: !showPassword[key]}));
     useEffect(() => {
         const isValid = !Object.entries(passwords).every(([key, value]) => !validatePasswordField(key, value));
         setIsChangePasswordDisabled(isValid);
@@ -221,7 +225,7 @@ const Profile = () => {
                                 required
                                 id="outlined-adornment-password"
                                 label="Current Password"
-                                type={showPassword ? 'text' : 'password'}
+                                type={showPassword.currentPassword ? 'text' : 'password'}
                                 value={passwords.currentPassword}
                                 error={!!passwordsError.currentPassword}
                                 helperText={passwordsError.currentPassword} // Ensure `errors.password` exists
@@ -238,13 +242,13 @@ const Profile = () => {
                                         endAdornment: (
                                             <InputAdornment position="end">
                                                 <IconButton
-                                                    aria-label={showPassword ? 'hide the password' : 'display the password'}
-                                                    onClick={handleClickShowPassword}
+                                                    aria-label={showPassword.currentPassword ? 'hide the password' : 'display the password'}
+                                                    onClick={() => handleClickShowPassword("currentPassword")}
                                                     onMouseDown={handleMouseDownPassword}
                                                     onMouseUp={handleMouseUpPassword}
                                                     edge="end"
                                                 >
-                                                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                                                    {showPassword.currentPassword ? <VisibilityOff /> : <Visibility />}
                                                 </IconButton>
                                             </InputAdornment>
                                         )
@@ -257,7 +261,7 @@ const Profile = () => {
                                 required
                                 id="outlined-adornment-password"
                                 label="New Password"
-                                type={showPassword ? 'text' : 'password'}
+                                type={showPassword.newPassword ? 'text' : 'password'}
                                 value={passwords.newPassword}
                                 error={!!passwordsError.newPassword}
                                 helperText={passwordsError.newPassword} // Ensure `errors.password` exists
@@ -275,7 +279,7 @@ const Profile = () => {
                                             <InputAdornment position="end">
                                                 <IconButton
                                                     aria-label={showPassword ? 'hide the password' : 'display the password'}
-                                                    onClick={handleClickShowPassword}
+                                                    onClick={() => handleClickShowPassword("newPassword")}
                                                     onMouseDown={handleMouseDownPassword}
                                                     onMouseUp={handleMouseUpPassword}
                                                     edge="end"
@@ -293,7 +297,7 @@ const Profile = () => {
                                 required
                                 id="outlined-adornment-password"
                                 label="Confirm Password"
-                                type={showPassword ? 'text' : 'password'}
+                                type={showPassword.confirmPassword ? 'text' : 'password'}
                                 value={passwords.confirmPassword}
                                 error={!!passwordsError.confirmPassword}
                                 helperText={passwordsError.confirmPassword} // Ensure `errors.password` exists
@@ -311,7 +315,7 @@ const Profile = () => {
                                             <InputAdornment position="end">
                                                 <IconButton
                                                     aria-label={showPassword ? 'hide the password' : 'display the password'}
-                                                    onClick={handleClickShowPassword}
+                                                    onClick={() => handleClickShowPassword("confirmPassword")}
                                                     onMouseDown={handleMouseDownPassword}
                                                     onMouseUp={handleMouseUpPassword}
                                                     edge="end"

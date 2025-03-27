@@ -34,7 +34,9 @@ axiosInstance.interceptors.response.use(
             // return Promise.reject(error);
           }
     }
-    toast.error(response.data.message)
+    if(store.getState().auth.isAuthenticated) {
+      toast.error(response.data.message)
+    }
     return;
 
     // Re-throw the error to be handled elsewhere in your application if necessary
