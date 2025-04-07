@@ -31,7 +31,6 @@ axiosInstance.interceptors.response.use(
             }
             store.dispatch(logout())
             return;
-            // return Promise.reject(error);
           }
     }
     if(store.getState().auth.isAuthenticated) {

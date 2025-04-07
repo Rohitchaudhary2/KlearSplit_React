@@ -1,11 +1,16 @@
 import { PersonAdd, Search } from "@mui/icons-material";
 import { Paper } from "@mui/material";
-import React from "react";
+import React, { useState } from "react";
+import AddFriend from "../../friends/addFriend";
 
 const SearchBar: React.FC<{ placeholder: string; }> = ({ placeholder }) => {
+  const [addFriendOpen, setAddFriendOpen] = useState(false);
+
+  const handleAddFriendClose = () => setAddFriendOpen(false);
 
     return (
         <>
+        <AddFriend open={addFriendOpen} handleAddFriendClose={handleAddFriendClose}/>
             <div className="flex justify-between items-center gap-3">
                 <Paper elevation={5}>
                 <div className="flex justify-between items-center shadow px-3 py-2 bg-white rounded-lg">
@@ -26,6 +31,7 @@ const SearchBar: React.FC<{ placeholder: string; }> = ({ placeholder }) => {
                         className="shadow bg-white hover:cursor-pointer text-white-800 px-3 py-2 rounded"
                         data-bs-toggle="tooltip"
                         data-bs-placement="top"
+                        onClick={() => setAddFriendOpen(true)}
                     >
                         <PersonAdd />
                     </button>

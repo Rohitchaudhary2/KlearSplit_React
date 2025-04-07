@@ -1,12 +1,18 @@
 import { ArrowBack, MoreVert } from "@mui/icons-material"
 import { Avatar, Box, FormControl, IconButton, ListItemAvatar, Menu, MenuItem, Select, SelectChangeEvent, Typography } from "@mui/material"
 import { useState } from "react";
-import { toast } from "sonner";
 import ViewExpenses from "./viewExpenses";
 import Settlement from "./settlement";
+import { Friend } from "./index.model";
+import axiosInstance from "../../../utils/axiosInterceptor";
+import { API_URLS } from "../../../constants/apiUrls";
+import { toast } from "sonner";
 
-const Header = () => {
-  const [view, setView] = useState("All");
+const Header: React.FC<{friend: Friend, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, view: string}> = ({friend, handleViewChange, view}) => {
+  const isBlock = friend.block_status === "BOTH" || (friend.block_status === "friend1" && friend.status === "SENDER") || (friend.block_status === "friend2" && friend.status === "RECEIVER")
+  const [blockStatus, setBlockStatus] = useState(isBlock ? "Unblock" : "Block");
+  const isArchived = friend.archival_status === "BOTH" || (friend.archival_status === "friend1" && friend.status === "SENDER") || (friend.archival_status === "friend2" && friend.status === "RECEIVER")
+  const [archiveStatus, setArchiveStatus] = useState(isArchived ? "Unarchive" : "Archive");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const [viewExpensesOpen, setViewExpensesOpen] = useState(false);
@@ -21,15 +27,23 @@ const Header = () => {
     setSettlementOpen(true);
   }
   const handleSettlementClose = () => setSettlementOpen(false);
-  const handleViewChange = (e: SelectChangeEvent) => setView(e.target.value);
+  const viewChange = (e: SelectChangeEvent) => handleViewChange(e.target.value as "All" | "Messages" | "Expenses");
   const viewExpenses = () => {
     setViewExpensesOpen(true);
   }
-  const archive = () => {
-    console.log("archive");
+  const archive = async() => {
+    const res = await axiosInstance.patch(`${API_URLS.archiveBlockRequest}/${friend.conversation_id}`, { type: "archived"}, {withCredentials: true})
+    if (res.data.success) {
+      toast.success(`${archiveStatus}d successfully`);
+      setArchiveStatus(() => archiveStatus === "Archive" ? "Unarchive" : "Archive");
+    }
   }
-  const block = () => {
-    console.log("block");
+  const block = async() => {
+    const res = await axiosInstance.patch(`${API_URLS.archiveBlockRequest}/${friend.conversation_id}`, { type: "blocked"}, {withCredentials: true})
+    if (res.data.success) {
+      toast.success(`${blockStatus}ed successfully`);
+      setBlockStatus(() => blockStatus === "Block" ? "Unblock" : "Block");
+    }
   }
   const handleViewExpensesClose = () => setViewExpensesOpen(false);
   return (
@@ -42,7 +56,7 @@ const Header = () => {
         <ListItemAvatar sx={{ minWidth: 32 }}>
           <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 32, height: 32 }} />
         </ListItemAvatar>
-        <Typography variant="h6" textAlign="center">Rohit Chaudhary</Typography>
+        <Typography variant="h6" textAlign="center">{friend.friend.first_name} {friend.friend.last_name}</Typography>
       </Box>
       <div>
         <Box className="flex gap-2">
@@ -51,7 +65,7 @@ const Header = () => {
               labelId="demo-simple-select-label"
               id="demo-simple-select"
               value={view}
-              onChange={handleViewChange}
+              onChange={viewChange}
             >
               <MenuItem value="All">All</MenuItem>
               <MenuItem value="Messages">Messages</MenuItem>
@@ -82,10 +96,10 @@ const Header = () => {
             View Expenses
           </MenuItem>
           <MenuItem onClick={archive}>
-            Archive
+            {archiveStatus}
           </MenuItem>
           <MenuItem onClick={block}>
-            Block
+            {blockStatus}
           </MenuItem>
         </Menu>
       </div>

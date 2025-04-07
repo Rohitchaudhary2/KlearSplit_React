@@ -9,6 +9,7 @@ import Button from '@mui/joy/Button';
 import Payer from "./payer"
 import { motion } from "framer-motion"
 import SplitType from "./splitType"
+import CustomDialog from "../../../components/base/customModal"
 
 const VisuallyHiddenInput = styled('input')`
   clip: rect(0 0 0 0);
@@ -32,6 +33,7 @@ const AddExpense: React.FC<{
         total_amount: "",
         description: "",
         payer_id: user?.user_id,
+        debtor_id: "",
         participant1_share: 0,
         participant2_share: 0,
         split_type: "EQUAL",
@@ -42,6 +44,7 @@ const AddExpense: React.FC<{
         total_amount: "",
         description: ""
     })
+    const [dialogOpen, setDialogOpen] = useState(false);
     const [PayerDialogOpen, setPayerDialogOpen] = useState(false);
     const [splitTypeOpen, setSplitTypeOpen] = useState(false);
     const handlePayerDialogOpen = () => {
@@ -53,11 +56,19 @@ const AddExpense: React.FC<{
     const handlePayerDialogClose = () => setPayerDialogOpen(false);
     const handleSplitTypeClose = () => setSplitTypeOpen(false);
     const onChange = (key: string, value: string | number) => setExpenseInfo((prev) => ({ ...prev, [key]: value }))
+    const addExpenseDialogClose = () => {
+        setDialogOpen(true);
+    }
+    const handleConfirmDialogClose = (value: boolean) => {
+        setDialogOpen(false);
+        if(value) handleAddExpensesClose();
+    }
     return (
         <>
+            <CustomDialog open={dialogOpen} onClose={(value: boolean) => handleConfirmDialogClose(value)} title="Confirmation" message={`Are you sure to cancel adding expense? All the data entered will be lost.`}/>
             <SplitType open={splitTypeOpen} handleSplitTypeClose={handleSplitTypeClose}/>
             <Payer open={PayerDialogOpen} handleAddExpensesClose={handlePayerDialogClose} />
-            <Modal open={open} onClose={() => handleAddExpensesClose() }>
+            <Modal open={open} onClose={addExpenseDialogClose}>
                 <motion.div
                     initial={{ x: 0 }}
                     animate={(PayerDialogOpen || splitTypeOpen) ? { x: -200 } : { x: 0 }} // Slide to the left when second modal opens
@@ -158,7 +169,7 @@ const AddExpense: React.FC<{
                                     Bulk Insertion of Expenses
                                 </Button>
                                 <Box className="flex gap-3">
-                                    <Button onClick={handleAddExpensesClose}>
+                                    <Button onClick={addExpenseDialogClose}>
                                         Cancel
                                     </Button>
                                     <Button >

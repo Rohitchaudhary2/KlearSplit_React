@@ -1,14 +1,5 @@
 import React from "react";
-
-interface Expense {
-    expense_id: string;
-    expense_name: string;
-    total_amount: string;
-    debtor_amount: string;
-    payer_id: string;
-    createdAt: string;
-    updatedAt: string;
-}
+import { Expense } from "./index.model";
 
 const ExpenseItem: React.FC<{
     expense: Expense;
@@ -37,13 +28,13 @@ const ExpenseItem: React.FC<{
       {/* Expense Card */}
       <div className="flex justify-between items-center max-w-[28vw] max-h-[15vh] bg-black/20 border border-white/5 backdrop-blur-md shadow-md text-[calc(0.5vw+0.5em)] rounded-2xl p-3">
         {/* Status handling */}
-        {startsWithPrefix(expense.expense_id, "adding") ? (
+        {startsWithPrefix(expense.friend_expense_id, "adding") ? (
           <div className="flex items-center justify-center w-[15vw] h-[10vh] text-black rounded-2xl">
             <p>Adding Expense...</p>
           </div>
-        ) : startsWithPrefix(expense.expense_id, "error") ? (
+        ) : startsWithPrefix(expense.friend_expense_id, "error") ? (
           <div className="flex items-center justify-around p-3 w-[15vw] h-[10vh] text-black bg-red-400 rounded-2xl">
-            <button className="btn btn-sm" onClick={() => onRetryExpenseAddition(expense.expense_id)}>
+            <button className="btn btn-sm" onClick={() => onRetryExpenseAddition(expense.friend_expense_id)}>
               Retry
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="inline ml-1" viewBox="0 0 16 16">
                 <path d="M11 5.466V4H5a4 4 0 0 0-3.584 5.777.5.5 0 1 1-.896.446A5 5 0 0 1 5 3h6V1.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192m3.81.086a.5.5 0 0 1 .67.225A5 5 0 0 1 11 13H5v1.466a.25.25 0 0 1-.41.192l-2.36-1.966a.25.25 0 0 1 0-.384l2.36-1.966a.25.25 0 0 1 .41.192V12h6a4 4 0 0 0 3.585-5.777.5.5 0 0 1 .225-.67Z"/>
@@ -54,7 +45,7 @@ const ExpenseItem: React.FC<{
               <p className="mb-0">{expense.total_amount}</p>
             </div>
           </div>
-        ) : startsWithPrefix(expense.expense_id, "retry") ? (
+        ) : startsWithPrefix(expense.friend_expense_id, "retry") ? (
           <div className="flex items-center justify-center w-[15vw] h-[10vh] text-black">
             <div>Retrying...</div>
           </div>

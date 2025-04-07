@@ -1,9 +1,8 @@
 import { ModalDialog } from "@mui/joy"
-import { Modal, DialogTitle, Box, Typography, Avatar, Divider, ListItem, ListItemAvatar, ListItemButton, ListItemText, ButtonGroup, TextField } from "@mui/material"
-import { useSelector } from "react-redux"
-import { RootState } from "../../../store"
+import { Modal, DialogTitle, Box, Typography, Avatar, TextField } from "@mui/material"
 import { useState } from "react"
 import Button from '@mui/joy/Button';
+import classes from './index.module.css';
 
 const Settlement: React.FC<{
     open: boolean,
@@ -21,7 +20,7 @@ const Settlement: React.FC<{
                     position: "fixed",
                     top: "10",
                     // minHeight: "50%",
-                    minWidth: "25%",
+                    minWidth: "30%",
                     padding: 0,
                     border: "none",
                     display: "flex",
@@ -33,8 +32,13 @@ const Settlement: React.FC<{
                 <Box className="w-full self-start rounded p-3 flex flex-col gap-3">
                     <Box className="flex justify-between gap-3 px-6 items-center">
                         <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 60, height: 60 }} />
-                        <span className="arrow"></span>
+                        <span className={classes.arrow}></span>
                         <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 60, height: 60 }} />
+                    </Box>
+                    <Box className="flex justify-between gap-3 items-center">
+                        <Typography className="grow">Rohit Chaudhary</Typography>
+                        <Typography>paid</Typography>
+                        <Typography className="grow text-end">Rohit Bhambota</Typography>
                     </Box>
                     <TextField
                         label="Total Amount"
@@ -47,6 +51,10 @@ const Settlement: React.FC<{
                     // error={!!errors.total_amount}
                     // helperText={errors.total_amount}
                     />
+                    <Box className="flex flex-col gap-3">
+                        <Button variant="outlined">Record as cash Payment</Button>
+                        <Button variant="outlined">Pay using Paypal</Button>
+                    </Box>
                     <Box className="flex justify-end items-center p-3">
                         <Button onClick={handleSettlementClose}>
                             Cancel

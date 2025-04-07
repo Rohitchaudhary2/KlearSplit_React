@@ -16,7 +16,7 @@
   "scripts": {
     "install": "cd server && npm install && cd ../client && npm install",
     "prepare": "husky install",
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev": "concurrently 'npm run server' 'npm run client'",
     "server": "npm run dev --prefix server",
     "client": "npm run dev --prefix client"
   },
