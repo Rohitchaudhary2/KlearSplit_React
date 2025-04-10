@@ -69,7 +69,7 @@ const Header: React.FC<{friend: Friend, handleViewChange: (view: "All" | "Messag
             >
               <MenuItem value="All">All</MenuItem>
               <MenuItem value="Messages">Messages</MenuItem>
-              <MenuItem value="expenses">Expenses</MenuItem>
+              <MenuItem value="Expenses">Expenses</MenuItem>
             </Select>
           </FormControl>
           <IconButton

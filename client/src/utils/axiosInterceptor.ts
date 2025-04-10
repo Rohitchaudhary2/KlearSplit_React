@@ -19,7 +19,6 @@ axiosInstance.interceptors.response.use(
         try {
             // Refresh the access token
             const user = await axiosInstance.get(API_URLS.refreshAccessToken, { withCredentials: true });
-            
             store.dispatch(login(user.data.data));
     
             // Retry the original request

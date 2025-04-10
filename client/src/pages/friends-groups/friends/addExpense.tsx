@@ -2,7 +2,7 @@ import { ModalDialog } from "@mui/joy"
 import { Modal, DialogTitle, Box, TextField, Typography } from "@mui/material"
 import { useSelector } from "react-redux"
 import { RootState } from "../../../store"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import SvgIcon from '@mui/joy/SvgIcon';
 import { styled } from '@mui/joy';
 import Button from '@mui/joy/Button';
@@ -25,19 +25,21 @@ const VisuallyHiddenInput = styled('input')`
 
 const AddExpense: React.FC<{
     open: boolean,
-    handleAddExpensesClose: () => void
-}> = ({ open, handleAddExpensesClose }) => {
+    friend: User
+    handleAddExpensesClose: () => void,
+    handleAddExpense: (expenseInfo: FormData) => void
+}> = ({ open, friend, handleAddExpensesClose, handleAddExpense }) => {
     const user = useSelector((store: RootState) => store.auth.user)
     const [expenseInfo, setExpenseInfo] = useState({
         expense_name: "",
         total_amount: "",
         description: "",
-        payer_id: user?.user_id,
+        payer_id: user!.user_id,
         debtor_id: "",
-        participant1_share: 0,
-        participant2_share: 0,
+        participant1_share: "",
+        participant2_share: "",
         split_type: "EQUAL",
-        receipt: null
+        debtor_share: ""
     });
     const [errors, setErrors] = useState({
         expense_name: "",
@@ -55,19 +57,99 @@ const AddExpense: React.FC<{
     }
     const handlePayerDialogClose = () => setPayerDialogOpen(false);
     const handleSplitTypeClose = () => setSplitTypeOpen(false);
-    const onChange = (key: string, value: string | number) => setExpenseInfo((prev) => ({ ...prev, [key]: value }))
+    const onChange = (key: string, value: string) => {
+        setExpenseInfo((prev) => ({ ...prev, [key]: value }));
+        setErrors((prev) => ({ ...prev, [key]: validateField(key, value) }));
+    }
     const addExpenseDialogClose = () => {
         setDialogOpen(true);
     }
     const handleConfirmDialogClose = (value: boolean) => {
         setDialogOpen(false);
-        if(value) handleAddExpensesClose();
+        if (value) handleAddExpensesClose();
+    }
+    const validateField = (name: string, value: string) => {
+        let errorMsg = "";
+
+        switch (name) {
+            case "expense_name":
+                if (!value) errorMsg = "Expense name is required";
+                else if (value.length > 50) errorMsg = "Must not be greater than 50 characters";
+                break;
+
+            case "total_amount":
+                const isAmountNan = isNaN(Number(expenseInfo.total_amount));
+                const amount = parseFloat(expenseInfo.total_amount);
+                if (!value) errorMsg = "Total amount is required";
+                else if (isAmountNan || amount <= 0 || amount > 9999999999.99) {
+                    errorMsg = "Amount must be between 0.01 and 9,999,999,999.99";
+                }
+                break;
+
+            case "description":
+                if (value.length > 150) errorMsg = "Must not be greater than 150 characters";
+                break;
+        }
+        return errorMsg;
+    };
+    const [isFormInvalid, setIsFormInvalid] = useState(true);
+    const isValid = !Object.entries(expenseInfo).every(([key, value]) => !validateField(key, value!));
+    useEffect(() => setIsFormInvalid(isValid), [isValid])
+
+    const handleSubmit = async () => {
+        expenseInfo.debtor_id = expenseInfo.payer_id === user?.user_id ? friend.user_id : user!.user_id;
+        expenseInfo.debtor_share = expenseInfo.debtor_id === user?.user_id ? expenseInfo.participant1_share : expenseInfo.participant2_share
+        const formData = new FormData();
+        Object.keys(expenseInfo).forEach((key) => {
+            const value = expenseInfo[
+                key as keyof typeof expenseInfo
+            ] as unknown;
+
+            if (value !== null && value !== undefined && value !== "") {
+                if (key === "receipt" && value instanceof File) {
+                    formData.append(key, value);
+                } else {
+                    formData.append(key, value.toString());
+                }
+            }
+        });
+        handleAddExpense(formData);
+        handleAddExpensesClose();
+        setExpenseInfo({
+            expense_name: "",
+            total_amount: "",
+            description: "",
+            payer_id: user!.user_id,
+            debtor_id: "",
+            participant1_share: "",
+            participant2_share: "",
+            split_type: "EQUAL",
+            debtor_share: ""
+        });
+    }
+    const payerChange = (selectedId: string) => {
+        setExpenseInfo((prev) => ({ ...prev, "payer_id": selectedId }));
+    }
+    const handleShareChange = (key: string, value: string) => {
+        setExpenseInfo((prev) => ({ ...prev, [key]: value }))
     }
     return (
         <>
-            <CustomDialog open={dialogOpen} onClose={(value: boolean) => handleConfirmDialogClose(value)} title="Confirmation" message={`Are you sure to cancel adding expense? All the data entered will be lost.`}/>
-            <SplitType open={splitTypeOpen} handleSplitTypeClose={handleSplitTypeClose}/>
-            <Payer open={PayerDialogOpen} handleAddExpensesClose={handlePayerDialogClose} />
+            <CustomDialog open={dialogOpen} onClose={(value: boolean) => handleConfirmDialogClose(value)} title="Confirmation" message={`Are you sure to cancel adding expense? All the data entered will be lost.`} />
+            {
+                open &&
+                <>
+                    <SplitType
+                        friend={friend}
+                        user={user!}
+                        open={splitTypeOpen}
+                        handleSplitTypeClose={handleSplitTypeClose}
+                        expenseInfo={expenseInfo}
+                        handleShareChange={handleShareChange}
+                    />
+                    <Payer friend={friend} user={user!} selectedId={expenseInfo.payer_id} payerChange={payerChange} open={PayerDialogOpen} handleAddExpensesClose={handlePayerDialogClose} />
+                </>
+            }
             <Modal open={open} onClose={addExpenseDialogClose}>
                 <motion.div
                     initial={{ x: 0 }}
@@ -133,9 +215,19 @@ const AddExpense: React.FC<{
                             />
                             <Box className="rounded-lg flex justify-center items-center gap-2">
                                 <Typography>Paid by</Typography>
-                                <Button sx={{ borderRadius: "50px" }} onClick={handlePayerDialogOpen} variant="outlined">you</Button>
+                                <Button disabled={isFormInvalid} sx={{ borderRadius: "50px" }} onClick={handlePayerDialogOpen} variant="outlined">
+                                    {
+                                        expenseInfo.payer_id === user?.user_id
+                                            ?
+                                            "you"
+                                            :
+                                            `${friend.first_name} ${friend.last_name}`
+                                    }
+                                </Button>
                                 <Typography>and split</Typography>
-                                <Button sx={{ borderRadius: "50px" }} onClick={handleSplitTypeOpen} variant="outlined">EQUAL</Button>
+                                <Button disabled={isFormInvalid} sx={{ borderRadius: "50px" }} onClick={handleSplitTypeOpen} variant="outlined">
+                                    {expenseInfo.split_type}
+                                </Button>
                             </Box>
                             <Button
                                 component="label"
@@ -172,7 +264,7 @@ const AddExpense: React.FC<{
                                     <Button onClick={addExpenseDialogClose}>
                                         Cancel
                                     </Button>
-                                    <Button >
+                                    <Button disabled={isFormInvalid} onClick={handleSubmit}>
                                         Submit
                                     </Button>
                                 </Box>

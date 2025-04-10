@@ -14,12 +14,12 @@ import { useSelector } from "react-redux";
 import { Check, Clear } from "@mui/icons-material";
 import { toast } from "sonner";
 import { Expense, Friend, Message } from "./index.model";
-import { useSocket } from "./socket";
+import { useSocket } from "../shared/search-bar/socket";
 import { format } from "date-fns";
+import classes from './index.module.css'
 
 const Friendspage = () => {
   const [activeButton, setActiveButton] = useState("friends");
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messageContainer = useRef<HTMLDivElement | null>(null);
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [friendRequests, setFriendRequests] = useState<Friend[]>([]);
@@ -27,11 +27,14 @@ const Friendspage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [combined, setCombined] = useState<(Message | Expense)[]>([]);
+  const [loading, setLoading] = useState(false);
   const [allMessagesLoaded, setAllMessagesLoaded] = useState(false);
   const [allExpensesLoaded, setAllExpensesLoaded] = useState(false);
   const [allCombinedLoaded, setAllCombinedLoaded] = useState(false);
   const [view, setView] = useState<"All" | "Messages" | "Expenses">("All");
   const pageSize = 20;
+  const [scrollHeight, setScrollHeight] = useState(0);
+  const user = useSelector((store: RootState) => store.auth.user)
 
   const [timestampMessages, setTimestampMessages] = useState<string>(
     new Date().toISOString()
@@ -56,6 +59,7 @@ const Friendspage = () => {
   useEffect(() => {
     const handleNewMessage = (message: Message) => {
       setMessages((prevMessages) => [...prevMessages, message]);
+      setCombined((prev) => [...prev, message]);
     };
 
     // Listen for new conversation messages
@@ -69,10 +73,17 @@ const Friendspage = () => {
 
   // Function to scroll to bottom
   const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView();
+    // messagesEndRef.current.scrollIntoView();
+    if (!scrollHeight) {
+      messageContainer.current!.scrollTop = messageContainer.current!.scrollHeight;
+      setScrollHeight(messageContainer.current!.scrollTop);
+    } else {
+      messageContainer.current!.scrollTop += messageContainer.current!.scrollHeight - scrollHeight - 20;
     }
   };
+  // useEffect(() => {
+  //   if (messageContainer.current) messageContainer.current!.scrollTop += messageContainer.current!.scrollHeight - scrollHeight - 20;
+  // }, [messages.length, expenses.length, combined.length])
   useEffect(() => {
     const getFriendRequests = async () => {
       const res = await axiosInstance.get(`${API_URLS.getFriends}`, {
@@ -104,41 +115,138 @@ const Friendspage = () => {
       }
     }
   }, [])
+  const sortBycreatedAt = (data: (Message | Expense)[]) => {
+    return data.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  }
   useEffect(() => {
-    scrollToBottom()
-  }, [messageContainer.current, messages, view])
+    if (messageContainer.current) scrollToBottom()
+  }, [messageContainer.current, messages, view, expenses, combined])
   useEffect(() => {
-    if(selectedFriend) {
-      const fetchMessages = async() => {
-        const res = await axiosInstance.get(`${API_URLS.getMessages}/${selectedFriend?.conversation_id}`, {
-          params: { pageSize, timestamp: timestampMessages },
-          withCredentials: true
-        });
-        
-        setMessages(res.data.data)
-      }
-      const fetchExpenses = async() => {
-        const res = await axiosInstance.get(`${API_URLS.getExpenses}/${selectedFriend.conversation_id}`, {
-          params: { pageSize, timestamp: timestampExpenses },
-          withCredentials: true
-        });
-        setExpenses(res.data.data)
-      }
-      const fetchCombined = async() => {
-        const res = await axiosInstance.get(`${API_URLS.getCombined}/${selectedFriend.conversation_id}`, {
-          params: { pageSize, timestamp: timestampCombined },
-          withCredentials: true
-        });
-        setCombined(res.data.data)
-      }
-      fetchMessages();
-      fetchExpenses();
-      fetchCombined();
+    setScrollHeight(0);
+    if (selectedFriend) {
+      const fetchAllData = async () => {
+        setLoading(() => true);
+      
+        try {
+          const [messagesRes, expensesRes, combinedRes] = await Promise.all([
+            axiosInstance.get(`${API_URLS.getMessages}/${selectedFriend?.conversation_id}`, {
+              params: { pageSize, timestamp: timestampMessages },
+              withCredentials: true
+            }),
+            axiosInstance.get(`${API_URLS.getExpenses}/${selectedFriend.conversation_id}`, {
+              params: { pageSize, timestamp: timestampExpenses },
+              withCredentials: true
+            }),
+            axiosInstance.get(`${API_URLS.getCombined}/${selectedFriend.conversation_id}`, {
+              params: { pageSize, timestamp: timestampCombined },
+              withCredentials: true
+            }),
+          ]);
+      
+          // Handle messages
+          const messages = sortBycreatedAt(messagesRes.data.data);
+          if (messages.length < 20) setAllMessagesLoaded(true);
+          if (messages.length) setTimestampMessages(messages[0].createdAt);
+          setMessages(messages as Message[]);
+      
+          // Handle expenses
+          const expenses = sortBycreatedAt(expensesRes.data.data);
+          if (expenses.length < 20) setAllExpensesLoaded(true);
+          if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
+          setExpenses(expenses as Expense[]);
+      
+          // Handle combined
+          const combined = sortBycreatedAt(combinedRes.data.data);
+          if (combined.length < 20) setAllCombinedLoaded(true);
+          if (combined.length) setTimestampCombined(combined[0].createdAt);
+          setCombined(combined);
+      
+        } catch (error) {
+          console.error("Error fetching data:", error);
+          // Optionally show error state here
+        } finally {
+          setLoading(() => false); // Only done when all above are finished (or errored)
+        }
+      };      
+      fetchAllData();
     }
   }, [selectedFriend]);
+  const handleScrollToTop = async () => {
+    if (messageContainer.current && selectedFriend && !loading) {
+      const { scrollTop, scrollHeight } = messageContainer.current;
+      if (scrollTop === 0) {
+        switch (view) {
+          case "All": {
+            if (!allCombinedLoaded && combined.length) {
+              setLoading(() => true)
+              const res = await axiosInstance.get(`${API_URLS.getCombined}/${selectedFriend?.conversation_id}`, {
+                params: { pageSize, timestamp: timestampCombined },
+                withCredentials: true
+              });
+              const combined = sortBycreatedAt(res.data.data);
+              if (combined.length < 20) setAllCombinedLoaded(true);
+              if (combined.length) setTimestampCombined(combined[0].createdAt);
+              // combined.unshift(...combined);
+              // setCombined(() => combined);
+              setCombined((prev) => [...combined, ...prev]);
+              setScrollHeight(scrollHeight);
+              setLoading(() => false)
+            }
+            break;
+          }
+          case "Messages": {
+            if (!allMessagesLoaded && messages.length) {
+              setLoading(() => true)
+              const res = await axiosInstance.get(`${API_URLS.getMessages}/${selectedFriend?.conversation_id}`, {
+                params: { pageSize, timestamp: timestampMessages },
+                withCredentials: true
+              });
+              const messages = sortBycreatedAt(res.data.data);
+              if (messages.length < 20) setAllMessagesLoaded(true);
+              if (messages.length) setTimestampMessages(messages[0].createdAt);
+              setMessages((prev) => [...messages as Message[], ...prev])
+              setScrollHeight(scrollHeight);
+              setLoading(() => false)
+            }
+            break;
+          }
+          case "Expenses": {
+            if (!allExpensesLoaded && expenses.length) {
+              setLoading(true)
+              const res = await axiosInstance.get(`${API_URLS.getExpenses}/${selectedFriend?.conversation_id}`, {
+                params: { pageSize, timestamp: timestampExpenses },
+                withCredentials: true
+              });
+              const expenses = sortBycreatedAt(res.data.data);
+              if (expenses.length < 20) setAllExpensesLoaded(true);
+              if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
+              setExpenses((prev) => [...expenses as Expense[], ...prev]);
+              setScrollHeight(scrollHeight)
+              setLoading(false)
+            }
+          }
+        }
+      }
+    }
+  };
+  useEffect(() => {
+    const box = messageContainer.current;
+
+    // Add the scroll event listener
+    if (box) {
+      box.addEventListener('scroll', handleScrollToTop);
+    }
+
+    // Clean up the event listener when the component unmounts
+    return () => {
+      if (box) {
+        box.removeEventListener('scroll', handleScrollToTop);
+      }
+    };
+  }, [selectedFriend, allMessagesLoaded, allExpensesLoaded, allCombinedLoaded, view, timestampMessages, timestampExpenses, timestampCombined, loading]);
 
   const handleActiveButtonChange = (view: string) => setActiveButton(view);
-  const onSend = async(message: string) => {
+  const onSend = async (message: string) => {
     const messageData = {
       conversation_id: selectedFriend?.conversation_id,
       sender_id: currentUser?.user_id,
@@ -157,10 +265,41 @@ const Friendspage = () => {
       toast.success(`Request ${status} successfully`)
     }
   }
-  const handleViewChange = (view: "All" | "Messages" | "Expenses") => setView(view);
+  const handleViewChange = (view: "All" | "Messages" | "Expenses") => {
+    setView(view);
+    setScrollHeight(0);
+  }
+  const handleSelectFriend = (friend: Friend) => {
+    if(friend === selectedFriend) return;
+    if(selectedFriend) {
+      leaveRoom(selectedFriend.conversation_id);
+    }
+    setSelectedFriend(friend);
+    setAllMessagesLoaded(false);
+    setAllExpensesLoaded(false);
+    setAllCombinedLoaded(false);
+    setTimestampMessages(new Date().toISOString());
+    setTimestampExpenses(new Date().toISOString());
+    setTimestampCombined(new Date().toISOString());
+    setMessages([]);
+    setExpenses([]);
+    setCombined([]);
+    joinRoom(friend.conversation_id);
+  }
+  const addExpense = async(expenseInfo: FormData) => {
+    const res = await axiosInstance.post(`${API_URLS.addExpense}/${selectedFriend?.conversation_id}`, expenseInfo, { withCredentials: true });
+        if (res.data.success) {
+          setCombined((prev) => [...prev, res.data.data]);
+          setExpenses((prev) => [...prev, res.data.data]);
+          selectedFriend!.balance_amount = JSON.stringify(parseFloat(selectedFriend!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
+          toast.success("Expense Added successfully")
+        }
+  }
   return (
     <>
-      <AddExpense open={addExpenseDialogOpen} handleAddExpensesClose={handleAddExpensesClose} />
+      {
+        selectedFriend && <AddExpense friend={selectedFriend!.friend} open={addExpenseDialogOpen} handleAddExpense={addExpense} handleAddExpensesClose={handleAddExpensesClose} />
+      }
       <Box className="grid gap-4 grid-cols-4 h-[89.5vh]">
         <Box className="p-4 pe-0 flex flex-col flex-wrap h-full col-span-4 md:col-span-1" hidden={false} sx={{ backgroundColor: "#A1E3F9" }}>
           <Box className="pb-4">
@@ -187,8 +326,7 @@ const Friendspage = () => {
                     return (
                       <>
                         <ListItem disablePadding alignItems="flex-start" key={friend.conversation_id} onClick={() => {
-                          setSelectedFriend(friend);
-                          joinRoom(friend.conversation_id)
+                          handleSelectFriend(friend);
                         }}>
                           <ListItemButton sx={{ paddingX: 1 }}>
                             <ListItemAvatar sx={{ minWidth: 32, paddingRight: 1 }}>
@@ -231,42 +369,77 @@ const Friendspage = () => {
               {
                 selectedFriend ?
                   <>
-                    <Box><Header friend={selectedFriend} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)}/></Box>
+                    <Box><Header friend={selectedFriend} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
                     <Divider />
                     <Box ref={messageContainer} className="h-[67vh] overflow-auto">
+                    {loading && (
+                      <div
+                        className={classes.loader}
+                      />
+                    )}
                       {
                         view === "Messages" ?
-                        messages.map((message) => (
-                          <MessageItem
-                        message={{ text: message.message, createdAt: format(new Date(message.createdAt), "hh:mm a")}}
-                        isCurrentUser={message.sender_id === currentUser?.user_id}
-                        name={selectedFriend.friend.first_name}
-                        imageUrl="/vite.svg"
-                        currentUserImageUrl="/vite.svg"
-                      />
-                        )) : null
+                          messages.map((message) => (
+                            <MessageItem
+                              message={{ text: message.message, createdAt: format(new Date(message.createdAt), "hh:mm a") }}
+                              isCurrentUser={message.sender_id === currentUser?.user_id}
+                              name={selectedFriend.friend.first_name}
+                              imageUrl="/vite.svg"
+                              currentUserImageUrl="/vite.svg"
+                            />
+                          )) : null
                       }
                       {
                         view === "Expenses" ?
-                        expenses.map((expense) => (
-                          <ExpenseItem
-                            key={expense.friend_expense_id}
-                            expense={expense}
-                            isCurrentUserPayer={expense.payer === "You"}
-                            imageUrl="vite.svg"
-                            currentUserImageUrl="vite.svg"
-                            name={expense.payer}
-                          // onRetryExpenseAddition={handleRetry}
-                          />
-                        )) : null
+                          expenses.map((expense) => (
+                            <ExpenseItem
+                              key={expense.friend_expense_id}
+                              expense={expense}
+                              isCurrentUserPayer={expense.payer_id === user?.user_id}
+                              imageUrl="vite.svg"
+                              currentUserImageUrl="vite.svg"
+                              name={expense.payer}
+                            // onRetryExpenseAddition={handleRetry}
+                            />
+                          )) : null
                       }
-                      
-                      <Box ref={messagesEndRef} />
+                      {
+                        view === "All" ?
+                          combined.map((item) => {
+                            if ("friend_expense_id" in item) {
+                              return (
+                                <ExpenseItem
+                                  key={item.friend_expense_id}
+                                  expense={item}
+                                  isCurrentUserPayer={item.payer_id === user?.user_id}
+                                  imageUrl="vite.svg"
+                                  currentUserImageUrl="vite.svg"
+                                  name={item.payer}
+                                // onRetryExpenseAddition={handleRetry}
+                                />
+                              )
+                            }
+
+                            if ("message_id" in item) {
+                              return (
+                                <MessageItem
+                                  message={{ text: item.message, createdAt: format(new Date(item.createdAt), "hh:mm a") }}
+                                  isCurrentUser={item.sender_id === currentUser?.user_id}
+                                  name={selectedFriend.friend.first_name}
+                                  imageUrl="/vite.svg"
+                                  currentUserImageUrl="/vite.svg"
+                                />
+                              )
+                            }
+                          }
+                          )
+                          : null
+                      }
                     </Box>
                     <Divider />
                     <Box><MessageInput handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
                   </>
-                  : 
+                  :
                   <Box className="flex flex-col justify-center content-center items-center h-100">
                     <Typography align="center">Select a friend to have chat with or to add expense</Typography>
                   </Box>

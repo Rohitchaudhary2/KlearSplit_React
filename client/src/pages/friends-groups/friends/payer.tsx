@@ -1,32 +1,16 @@
 import { ModalDialog } from "@mui/joy"
 import { Modal, DialogTitle, Box, Typography, Avatar, Divider, ListItem, ListItemAvatar, ListItemButton, ListItemText } from "@mui/material"
-import { useSelector } from "react-redux"
-import { RootState } from "../../../store"
-import { useState } from "react"
 import Button from '@mui/joy/Button';
 import { motion } from "framer-motion"
 
 const Payer: React.FC<{
     open: boolean,
+    friend: User,
+    user: User,
+    selectedId: string,
+    payerChange: (selectedId: string) => void
     handleAddExpensesClose: () => void
-}> = ({ open, handleAddExpensesClose }) => {
-    const user = useSelector((store: RootState) => store.auth.user)
-    const [expenseInfo, setExpenseInfo] = useState({
-        expense_name: "",
-        total_amount: "",
-        description: "",
-        payer_id: user?.user_id,
-        participant1_share: 0,
-        participant2_share: 0,
-        split_type: "EQUAL",
-        receipt: null
-    });
-    const [errors, setErrors] = useState({
-        expense_name: "",
-        total_amount: "",
-        description: ""
-    })
-    const onChange = (key: string, value: string | number) => setExpenseInfo((prev) => ({ ...prev, [key]: value }))
+}> = ({ open, friend, user, handleAddExpensesClose, selectedId, payerChange }) => {
     return (
         <Modal hideBackdrop={true} open={open} onClose={() => handleAddExpensesClose()}>
             <motion.div
@@ -58,18 +42,18 @@ const Payer: React.FC<{
                     <DialogTitle className="bg-[#3674B5] text-center text-white" sx={{ borderRadius: "7px 7px 0px 0px" }}>Choose Payer</DialogTitle>
                     <Box className="rounded bg-[white] flex flex-col">
                         {
-                            [0, 1].map((index) => {
+                            [user, friend].map((participant) => {
                                 return (
                                     <>
-                                        <ListItem disablePadding alignItems="flex-start" key={index}>
-                                            <ListItemButton sx={{ paddingX: 1 }}>
+                                        <ListItem disablePadding alignItems="flex-start" key={participant.user_id}>
+                                            <ListItemButton sx={{ paddingX: 1 }} selected={selectedId === participant.user_id} onClick={() => payerChange(participant.user_id)}>
                                                 <ListItemAvatar sx={{ minWidth: 32, paddingRight: 1 }}>
                                                     <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 32, height: 32 }} />
                                                 </ListItemAvatar>
                                                 <ListItemText
                                                     primary={
                                                         <Box className="flex justify-between">
-                                                            <Box>Rohit Chaudhary</Box>
+                                                            <Box>{participant.first_name} {participant.last_name}</Box>
                                                         </Box>
                                                     }
                                                     secondary={
@@ -78,7 +62,7 @@ const Payer: React.FC<{
                                                             variant="body2"
                                                             sx={{ color: 'text.primary', display: 'inline' }}
                                                         >
-                                                            sdesdewdwsit@gmail.com
+                                                            {participant.email}
                                                         </Typography>
                                                     }
                                                 />

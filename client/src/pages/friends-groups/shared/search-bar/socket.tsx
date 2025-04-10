@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { environment } from '../../../environments/index'; // Make sure the path is correct
-import { Message } from './index.model';
+import { environment } from '../../../../environments/index'; // Make sure the path is correct
+import { Message } from '../../friends/index.model';
 
 export const useSocket = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
