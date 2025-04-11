@@ -8,7 +8,7 @@ import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
 
-const Header: React.FC<{friend: Friend, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, view: string}> = ({friend, handleViewChange, view}) => {
+const Header: React.FC<{friend: Friend, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, handleSettlement: (settlementAmount: number) => void,view: string}> = ({friend, handleViewChange, handleSettlement, view}) => {
   const isBlock = friend.block_status === "BOTH" || (friend.block_status === "friend1" && friend.status === "SENDER") || (friend.block_status === "friend2" && friend.status === "RECEIVER")
   const [blockStatus, setBlockStatus] = useState(isBlock ? "Unblock" : "Block");
   const isArchived = friend.archival_status === "BOTH" || (friend.archival_status === "friend1" && friend.status === "SENDER") || (friend.archival_status === "friend2" && friend.status === "RECEIVER")
@@ -46,11 +46,14 @@ const Header: React.FC<{friend: Friend, handleViewChange: (view: "All" | "Messag
     }
   }
   const handleViewExpensesClose = () => setViewExpensesOpen(false);
+  const addSettlement = (settlementAmount: number) => {
+    handleSettlement(settlementAmount)
+  }
   return (
     <>
-    <Settlement open={settlementOpen} handleSettlementClose={handleSettlementClose}/>
+    <Settlement handleSettlement={addSettlement} selectedFriend={friend} open={settlementOpen} handleSettlementClose={handleSettlementClose}/>
     <Box className="flex justify-between p-2 content-center">
-      <ViewExpenses open={viewExpensesOpen} handleViewExpensesClose={handleViewExpensesClose}/>
+      <ViewExpenses friend={friend} open={viewExpensesOpen} handleViewExpensesClose={handleViewExpensesClose}/>
       <Box className="flex justify-between gap-2 items-center">
         <ArrowBack />
         <ListItemAvatar sx={{ minWidth: 32 }}>

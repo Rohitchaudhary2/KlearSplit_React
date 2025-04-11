@@ -3,14 +3,58 @@ import { Modal, DialogTitle, Box, Typography, Avatar, TextField } from "@mui/mat
 import { useState } from "react"
 import Button from '@mui/joy/Button';
 import classes from './index.module.css';
+import { RootState } from "../../../store";
+import { useSelector } from "react-redux";
+import { Friend } from "./index.model";
 
 const Settlement: React.FC<{
     open: boolean,
-    handleSettlementClose: () => void
-}> = ({ open, handleSettlementClose }) => {
+    handleSettlementClose: () => void,
+    handleSettlement: (settlementAmount: number) => void,
+    selectedFriend: Friend
+}> = ({ open, handleSettlementClose, handleSettlement, selectedFriend }) => {
+    const user = useSelector((store: RootState) => store.auth.user)
+    const totalAmount = Math.abs(
+        parseFloat(selectedFriend.balance_amount),
+      );
+    const [settlementAmount, setSettlementAmount] = useState(totalAmount);
+    const isUserPayer = parseFloat(selectedFriend.balance_amount) < 0;
+    const getFullNameAndImage = (user: User | Friend["friend"]) => {
+        return {
+          fullName: `${user?.first_name} ${user?.last_name ?? ""}`.trim(),
+          imageUrl: user?.image_url,
+        };
+      }
+    let payerName, payerImage, debtorName, debtorImage, payerId, debtorId;
 
-    const [settlementAmount, setSettlementAmount] = useState("0");
-    const onChange = (value: string) => setSettlementAmount(value);
+    switch(isUserPayer) {
+      case true: {
+        const { fullName: payer, imageUrl: payerImg } = getFullNameAndImage(user!);
+        const { fullName: debtor, imageUrl: debtorImg } = getFullNameAndImage(selectedFriend.friend);
+        payerName = payer;
+        debtorName = debtor;
+        payerImage = payerImg;
+        debtorImage = debtorImg;
+        payerId = user!.user_id;
+        debtorId = selectedFriend.friend.user_id;
+        break;
+      }
+      case false: {
+        const { fullName: payer, imageUrl: payerImg } = getFullNameAndImage(selectedFriend.friend);
+        const { fullName: debtor, imageUrl: debtorImg } = getFullNameAndImage(user!);
+        payerName = payer;
+        debtorName = debtor;
+        payerImage = payerImg;
+        debtorImage = debtorImg;
+        debtorId = user!.user_id;
+        payerId = selectedFriend.friend.user_id;
+      }
+    }
+    const onChange = (value: string) => setSettlementAmount(parseFloat(value));
+    const handleSubmit = () => {
+        handleSettlement(settlementAmount);
+        handleSettlementClose()
+    }
     return (
         <Modal open={open} onClose={() => handleSettlementClose()}>
 
@@ -36,9 +80,9 @@ const Settlement: React.FC<{
                         <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 60, height: 60 }} />
                     </Box>
                     <Box className="flex justify-between gap-3 items-center">
-                        <Typography className="grow">Rohit Chaudhary</Typography>
+                        <Typography className="grow">{payerName}</Typography>
                         <Typography>paid</Typography>
-                        <Typography className="grow text-end">Rohit Bhambota</Typography>
+                        <Typography className="grow text-end">{debtorName}</Typography>
                     </Box>
                     <TextField
                         label="Total Amount"
@@ -52,7 +96,7 @@ const Settlement: React.FC<{
                     // helperText={errors.total_amount}
                     />
                     <Box className="flex flex-col gap-3">
-                        <Button variant="outlined">Record as cash Payment</Button>
+                        <Button variant="outlined" onClick={handleSubmit}>Record as cash Payment</Button>
                         <Button variant="outlined">Pay using Paypal</Button>
                     </Box>
                     <Box className="flex justify-end items-center p-3">

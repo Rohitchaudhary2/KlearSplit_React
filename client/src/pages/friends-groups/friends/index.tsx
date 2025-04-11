@@ -126,7 +126,7 @@ const Friendspage = () => {
     if (selectedFriend) {
       const fetchAllData = async () => {
         setLoading(() => true);
-      
+
         try {
           const [messagesRes, expensesRes, combinedRes] = await Promise.all([
             axiosInstance.get(`${API_URLS.getMessages}/${selectedFriend?.conversation_id}`, {
@@ -142,32 +142,32 @@ const Friendspage = () => {
               withCredentials: true
             }),
           ]);
-      
+
           // Handle messages
           const messages = sortBycreatedAt(messagesRes.data.data);
           if (messages.length < 20) setAllMessagesLoaded(true);
           if (messages.length) setTimestampMessages(messages[0].createdAt);
           setMessages(messages as Message[]);
-      
+
           // Handle expenses
           const expenses = sortBycreatedAt(expensesRes.data.data);
           if (expenses.length < 20) setAllExpensesLoaded(true);
           if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
           setExpenses(expenses as Expense[]);
-      
+
           // Handle combined
           const combined = sortBycreatedAt(combinedRes.data.data);
           if (combined.length < 20) setAllCombinedLoaded(true);
           if (combined.length) setTimestampCombined(combined[0].createdAt);
           setCombined(combined);
-      
+
         } catch (error) {
           console.error("Error fetching data:", error);
           // Optionally show error state here
         } finally {
           setLoading(() => false); // Only done when all above are finished (or errored)
         }
-      };      
+      };
       fetchAllData();
     }
   }, [selectedFriend]);
@@ -270,8 +270,8 @@ const Friendspage = () => {
     setScrollHeight(0);
   }
   const handleSelectFriend = (friend: Friend) => {
-    if(friend === selectedFriend) return;
-    if(selectedFriend) {
+    if (friend === selectedFriend) return;
+    if (selectedFriend) {
       leaveRoom(selectedFriend.conversation_id);
     }
     setSelectedFriend(friend);
@@ -286,14 +286,27 @@ const Friendspage = () => {
     setCombined([]);
     joinRoom(friend.conversation_id);
   }
-  const addExpense = async(expenseInfo: FormData) => {
+  const addExpense = async (expenseInfo: FormData) => {
     const res = await axiosInstance.post(`${API_URLS.addExpense}/${selectedFriend?.conversation_id}`, expenseInfo, { withCredentials: true });
-        if (res.data.success) {
-          setCombined((prev) => [...prev, res.data.data]);
-          setExpenses((prev) => [...prev, res.data.data]);
-          selectedFriend!.balance_amount = JSON.stringify(parseFloat(selectedFriend!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
-          toast.success("Expense Added successfully")
-        }
+    if (res.data.success) {
+      setCombined((prev) => [...prev, res.data.data]);
+      setExpenses((prev) => [...prev, res.data.data]);
+      selectedFriend!.balance_amount = JSON.stringify(parseFloat(selectedFriend!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
+      toast.success("Expense Added successfully")
+    }
+  }
+  const handleSettlement = async (settlementAmount: number) => {
+    const res = await axiosInstance.post(
+      `${API_URLS.addExpense}/${selectedFriend?.conversation_id}`,
+      { split_type: "SETTLEMENT", total_amount: settlementAmount },
+      { withCredentials: true }
+    )
+    if (res.data.success) {
+      setCombined((prev) => [...prev, res.data.data]);
+      setExpenses((prev) => [...prev, res.data.data]);
+      selectedFriend!.balance_amount = JSON.stringify(parseFloat(selectedFriend!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
+      toast.success("Settlement added successfully")
+    }
   }
   return (
     <>
@@ -369,14 +382,14 @@ const Friendspage = () => {
               {
                 selectedFriend ?
                   <>
-                    <Box><Header friend={selectedFriend} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
+                    <Box><Header handleSettlement={handleSettlement} friend={selectedFriend} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
                     <Divider />
                     <Box ref={messageContainer} className="h-[67vh] overflow-auto">
-                    {loading && (
-                      <div
-                        className={classes.loader}
-                      />
-                    )}
+                      {loading && (
+                        <div
+                          className={classes.loader}
+                        />
+                      )}
                       {
                         view === "Messages" ?
                           messages.map((message) => (
