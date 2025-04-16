@@ -8,7 +8,7 @@ import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
 
-const Header: React.FC<{group: GroupData, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, handleSettlement: (settlementAmount: number) => void,view: string}> = ({group, handleViewChange, handleSettlement, view}) => {
+const Header: React.FC<{group: GroupData, handleGroupDetailsOpen: () => void, handleBackButton: () => void, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, handleSettlement: (settlementAmount: number) => void,view: string}> = ({group, handleGroupDetailsOpen, handleBackButton, handleViewChange, handleSettlement, view}) => {
   const [blockStatus, setBlockStatus] = useState(group.has_blocked ? "Unblock" : "Block");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -39,17 +39,20 @@ const Header: React.FC<{group: GroupData, handleViewChange: (view: "All" | "Mess
   const addSettlement = (settlementAmount: number) => {
     handleSettlement(settlementAmount)
   }
+  const onLeaveGroup = () => {
+
+  }
   return (
     <>
     {/* <Settlement handleSettlement={addSettlement} selectedGroup={group} open={settlementOpen} handleSettlementClose={handleSettlementClose}/> */}
     <Box className="flex justify-between p-2 content-center">
       <ViewExpenses group={group} open={viewExpensesOpen} handleViewExpensesClose={handleViewExpensesClose}/>
       <Box className="flex justify-between gap-2 items-center">
-        <ArrowBack />
+        <ArrowBack className="cursor-pointer" onClick={handleBackButton}/>
         <ListItemAvatar sx={{ minWidth: 32 }}>
           <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 32, height: 32 }} />
         </ListItemAvatar>
-        <Typography variant="h6" textAlign="center">{group.group_name}</Typography>
+        <Typography className="cursor-pointer" onClick={handleGroupDetailsOpen} variant="h6" textAlign="center">{group.group_name}</Typography>
       </Box>
       <div>
         <Box className="flex gap-2">
@@ -82,14 +85,23 @@ const Header: React.FC<{group: GroupData, handleViewChange: (view: "All" | "Mess
           open={open}
           onClose={handleClose}
         >
+          <MenuItem onClick={handleGroupDetailsOpen}>
+            Group Details
+          </MenuItem>
           <MenuItem onClick={settlement}>
-            Settle up
+            Add Members
+          </MenuItem>
+          <MenuItem onClick={settlement}>
+            Settle Up
           </MenuItem>
           <MenuItem onClick={viewExpenses}>
             View Expenses
           </MenuItem>
           <MenuItem onClick={block}>
             {blockStatus}
+          </MenuItem>
+          <MenuItem onClick={onLeaveGroup}>
+            Exit Group
           </MenuItem>
         </Menu>
       </div>

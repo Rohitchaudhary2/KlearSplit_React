@@ -3,20 +3,26 @@ import { Modal, DialogTitle, Box, Typography, Avatar, Divider, ListItem, ListIte
 import { useEffect, useState } from "react"
 import Button from '@mui/joy/Button';
 import { motion } from "framer-motion"
-import { GroupMemberData } from "./index.model";
+import { Debtors, GroupMemberData } from "./index.model";
+
+interface Debtor {
+    debtor_id: string;
+    debtor_share: number;
+}
 
 const SplitType: React.FC<{
     totalAmount: number,
     participants: GroupMemberData[],
     splitState: any
     open: boolean,
+    handleSplitTypeSubmit: (splitType:string, debtors: Debtor[]) => void,
     handleShareChange: (key: string, value: string) => void
     handleSplitTypeClose: () => void
-}> = ({ open, handleSplitTypeClose, totalAmount, participants, splitState, handleShareChange }) => {
+}> = ({ open, handleSplitTypeClose, totalAmount, participants, splitState, handleSplitTypeSubmit, handleShareChange }) => {
     const [splitType, setSplitType] = useState("EQUAL");
     const [selectedParticipants, setSelectedParticipants] = useState<GroupMemberData[]>([]);
     const [calculatedShares, setCalculatedShares] = useState<Record<string, number>>({});
-    const [remainingTotal, setRemainingTotal] = useState<number>();
+    const [remainingTotal, setRemainingTotal] = useState<number>(0);
     const [unequalShares, setUnequalShares] = useState<Record<string, number>>({});
     const [percentageShares, setPercentageShares] = useState<Record<string, number>>({});
     const [error, setError] = useState("");
@@ -67,7 +73,24 @@ const SplitType: React.FC<{
                 (p) => p.group_membership_id !== participant.group_membership_id
             ));
         } else {
-            selectedParticipants.push(participant);
+            setSelectedParticipants((prev) => [...prev, participant]);
+        }
+    }
+
+    const isValidSplit = (): boolean => {
+        const total = Object.values(calculatedShares).reduce(
+            (acc, val) => acc + (val || 0),
+            0
+        );
+
+        switch (splitType) {
+            case "UNEQUAL":
+                return total === totalAmount;
+            case "PERCENTAGE":
+                return total === 100;
+            default:
+                // For 'EQUAL' or other cases
+                return true;
         }
     }
 
@@ -75,11 +98,12 @@ const SplitType: React.FC<{
         const wasActiveItem = splitType;
         setSplitType(item);
 
+        const newShares = {...calculatedShares}
         switch (item) {
             case "EQUAL": {
                 const equalShare = totalAmount / (selectedParticipants.length || 1);
                 selectedParticipants.forEach(
-                    (participant) => (calculatedShares[participant.group_membership_id] = equalShare)
+                    (participant) => (newShares[participant.group_membership_id] = equalShare)
                 );
                 break;
             }
@@ -87,12 +111,12 @@ const SplitType: React.FC<{
                 if (wasActiveItem === "EQUAL" || Object.values(unequalShares).some((value) => value !== 0)) {
                     // If switching to UNEQUAL, retain previous values
                     selectedParticipants.forEach((participant) => {
-                        calculatedShares[participant.group_membership_id] = unequalShares[participant.group_membership_id] || 0;
+                        newShares[participant.group_membership_id] = unequalShares[participant.group_membership_id] || 0;
                     });
                 } else {
                     // Reset shares for first-time visit to UNEQUAL
                     participants.forEach((participant) => {
-                        calculatedShares[participant.group_membership_id] = 0;
+                        newShares[participant.group_membership_id] = 0;
                     });
                 }
                 break;
@@ -101,18 +125,25 @@ const SplitType: React.FC<{
                 if (wasActiveItem === "EQUAL" || Object.values(percentageShares).some((value) => value !== 0)) {
                     // If switching to PERCENTAGE, retain previous values
                     selectedParticipants.forEach((participant) => {
-                        calculatedShares[participant.group_membership_id] = percentageShares[participant.group_membership_id] || 0;
+                        newShares[participant.group_membership_id] = percentageShares[participant.group_membership_id] || 0;
                     });
                 } else {
                     // Reset shares for first-time visit to PERCENTAGE
                     participants.forEach((participant) => {
-                        calculatedShares[participant.group_membership_id] = 0;
+                        newShares[participant.group_membership_id] = 0;
                     });
                 }
                 break;
         }
+        setCalculatedShares(newShares);
 
-        updateRemainingTotal();
+        const total = Object.values(newShares).reduce(
+            (acc, val) => acc + (val || 0),
+            0
+        );
+        setRemainingTotal(item === "UNEQUAL"
+            ? totalAmount - total
+            : 100 - total);
     }
 
     const checkForNegativeValues = () => {
@@ -145,7 +176,8 @@ const SplitType: React.FC<{
         const debtors = selectedParticipants.map((participant) => ({
             debtor_id: participant.group_membership_id,
             debtor_share: calculatedShares[participant.group_membership_id] || 0,
-          })).filter((debtor) => debtor.debtor_share !== 0);
+        })).filter((debtor) => debtor.debtor_share !== 0);
+        handleSplitTypeSubmit(splitType, debtors);
         handleSplitTypeClose()
     }
 
@@ -198,7 +230,7 @@ const SplitType: React.FC<{
                     </Box>
                     <Box className="rounded bg-[white] flex flex-col">
                         {
-                            participants.map((participant, index) => {
+                            participants.map((participant) => {
                                 return (
                                     <>
                                         <ListItem disablePadding alignItems="flex-start" key={participant.group_membership_id}>
@@ -213,17 +245,26 @@ const SplitType: React.FC<{
                                                         </Box>
                                                     }
                                                 />
-                                                <TextField
-                                                    type="number"
-                                                    size="small"
-                                                    value={calculatedShares[participant.group_membership_id]}
-                                                    disabled={splitType === "EQUAL"}
-                                                    onChange={(e) => onChange(parseFloat(e.target.value), participant.group_membership_id)}
-                                                    className={
-                                                        splitType === "EQUAL" ? "cursor-not-allowed" : ""
-                                                    }
-                                                    sx={{ maxWidth: 80 }}
-                                                />
+                                                {
+                                                    splitType === "EQUAL" ?
+                                                        <input
+                                                            type="checkbox"
+                                                            className="form-check-input ms-3"
+                                                            checked={selectedParticipants.includes(participant)}
+                                                            onChange={() => toggleParticipant(participant)}
+                                                        /> :
+                                                        <TextField
+                                                            type="number"
+                                                            size="small"
+                                                            value={calculatedShares[participant.group_membership_id]}
+                                                            disabled={splitType === "EQUAL"}
+                                                            onChange={(e) => onChange(parseFloat(e.target.value), participant.group_membership_id)}
+                                                            className={
+                                                                splitType === "EQUAL" ? "cursor-not-allowed" : ""
+                                                            }
+                                                            sx={{ maxWidth: 80 }}
+                                                        />
+                                                }
                                             </ListItemButton>
                                         </ListItem>
                                         <Divider />
@@ -231,6 +272,33 @@ const SplitType: React.FC<{
                                 )
                             })
                         }
+                        {
+                            splitType !== "EQUAL" &&
+                            <div className="text-center mt-3">
+                            <span>Remaining:</span>
+                            <span className={remainingTotal! < 0 ? "text-red-500" : "text-green-500"}>
+                                {remainingTotal}
+                            </span>
+                            <span> of </span>
+                            <span className="text-success">
+                                {splitType === "UNEQUAL" ? totalAmount : "100%"}
+                            </span>
+
+                            {/* Validation Message */}
+                            {!isValidSplit() && (
+                                <div className="text-danger mt-2">
+                                    Total does not match the expected {splitType === "UNEQUAL" ? "amount" : "percentage"}.
+                                </div>
+                            )}
+
+                            {error.length > 0 && (
+                                <div className="text-danger mt-2">
+                                    {error}
+                                </div>
+                            )}
+                        </div>
+                        }
+
                         {
                             error &&
                             <Typography className="p-2 pb-0 text-red-500" variant="caption">*{error}</Typography>
@@ -250,4 +318,4 @@ const SplitType: React.FC<{
     )
 }
 
-export default SplitType
+export default SplitType;

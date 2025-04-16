@@ -11,12 +11,14 @@ import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
 import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
-import { Check, Clear } from "@mui/icons-material";
+import { Check, Clear, CurrencyRupee } from "@mui/icons-material";
 import { toast } from "sonner";
-import { GroupData, GroupExpenseData, GroupMemberData, GroupMessageData } from "./index.model";
+import { GroupData, GroupExpenseData, GroupMemberData, GroupMessageData, GroupSettlementData } from "./index.model";
 import { useSocket } from "../shared/search-bar/socket";
 import { format } from "date-fns";
 import classes from './index.module.css'
+import GroupDetails from "./groupDetails";
+import SettlementCard from "./settlementDisplay";
 
 const GroupsPage = () => {
   const [activeButton, setActiveButton] = useState("groups");
@@ -26,7 +28,7 @@ const GroupsPage = () => {
   const [groups, setGroups] = useState<GroupData[]>([]);
   const [messages, setMessages] = useState<GroupMessageData[]>([]);
   const [expenses, setExpenses] = useState<GroupExpenseData[]>([]);
-  const [combined, setCombined] = useState<(GroupMessageData | GroupExpenseData)[]>([]);
+  const [combined, setCombined] = useState<(GroupMessageData | GroupExpenseData | GroupSettlementData)[]>([]);
   const [loading, setLoading] = useState(false);
   const [allMessagesLoaded, setAllMessagesLoaded] = useState(false);
   const [allExpensesLoaded, setAllExpensesLoaded] = useState(false);
@@ -36,7 +38,8 @@ const GroupsPage = () => {
   const [scrollHeight, setScrollHeight] = useState(0);
   const user = useSelector((store: RootState) => store.auth.user);
   const [currentMember, setCurrentMember] = useState<GroupMemberData>();
-  const [groupMembers, setGroupMembers] = useState<GroupMemberData[]>()
+  const [groupMembers, setGroupMembers] = useState<GroupMemberData[]>();
+  const [groupDetailsOpen, setGroupDetailsOpen] = useState(false);
 
   const [timestampMessages, setTimestampMessages] = useState<string>(
     new Date().toISOString()
@@ -114,7 +117,7 @@ const GroupsPage = () => {
       }
     }
   }, [])
-  const sortBycreatedAt = (data: (GroupMessageData | GroupExpenseData)[]) => {
+  const sortBycreatedAt = (data: (GroupMessageData | GroupExpenseData | GroupSettlementData)[]) => {
     return data.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
   }
   useEffect(() => {
@@ -165,20 +168,20 @@ const GroupsPage = () => {
           setMessages(messagesWithName as GroupMessageData[]);
 
           // Handle expenses
-          const expenses = expensesRes.data.data.sort((a: GroupExpenseData, b: GroupExpenseData) => (a.createdAt < b.createdAt ? -1 : 1))
+          const expenses = expensesRes.data.data.sort((a: GroupExpenseData | GroupSettlementData, b: GroupExpenseData | GroupSettlementData) => (a.createdAt < b.createdAt ? -1 : 1))
           if (expenses.length < 20) setAllExpensesLoaded(true);
           if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
-          expenses.forEach((expense: GroupExpenseData) => {
+          expenses.forEach((expense: GroupExpenseData | GroupSettlementData) => {
             if (expense.payer_id === currentMember?.group_membership_id) {
               expense.payer = getFullNameAndImage(currentMember);
             } else {
               const payer = groupMembers!.find((member) => expense.payer_id === member.group_membership_id);
               expense.payer = getFullNameAndImage(payer);
             }
-            // if (!isGroupExpense(expense)) {
-            //   const debtor = groupMembers().find((member) => expense.debtor_id === member.group_membership_id);
-            //   expense.debtor = commonService.getFullNameAndImage(debtor);
-            // }
+            if ("group_settlement_id" in expense) {
+              const debtor = groupMembers!.find((member) => expense.debtor_id === member.group_membership_id);
+              expense.debtor = getFullNameAndImage(debtor);
+            }
           });
           setExpenses(expenses as GroupExpenseData[]);
 
@@ -187,7 +190,7 @@ const GroupsPage = () => {
           if (combined.length < 20) setAllCombinedLoaded(true);
           if (combined.length) setTimestampCombined(combined[0].createdAt);
           const combinedWithName = combined.map((item) => {
-            if("group_message_id" in item) {
+            if ("group_message_id" in item) {
               const sender = getFullNameAndImage(groupMembers!.find((member) =>
                 item.sender_id === member.group_membership_id
               ));
@@ -196,7 +199,7 @@ const GroupsPage = () => {
                 senderName: sender.fullName,
                 senderImage: sender.imageUrl
               };
-            } else {
+            } else if ("group_expense_id" in item) {
               if (item.payer_id === currentMember?.group_membership_id) {
                 item.payer = getFullNameAndImage(currentMember);
               } else {
@@ -204,6 +207,10 @@ const GroupsPage = () => {
                 item.payer = getFullNameAndImage(payer);
               }
               return item
+            } else {
+              const debtor = groupMembers!.find((member) => item.debtor_id === member.group_membership_id);
+              item.debtor = getFullNameAndImage(debtor);
+              return item;
             }
           })
           setCombined(combinedWithName);
@@ -337,13 +344,15 @@ const GroupsPage = () => {
     });
     return filteredMembers;
   }
-  const handleSelectGroupData = async (group: GroupData) => {
-    const res = await axiosInstance.get(`${API_URLS.group}/${group.group_id}`, { withCredentials: true })
-    if (res.data.success) {
-      const filteredMembers = filterMembers(res.data.data);
-      setGroupMembers(filteredMembers)
-      const currentMember = filteredMembers.find((member) => user?.user_id === member.member_id);
-      setCurrentMember(currentMember);
+  const handleSelectGroupData = async (group: GroupData | undefined) => {
+    if (group) {
+      const res = await axiosInstance.get(`${API_URLS.group}/${group.group_id}`, { withCredentials: true })
+      if (res.data.success) {
+        const filteredMembers = filterMembers(res.data.data);
+        setGroupMembers(filteredMembers)
+        const currentMember = filteredMembers.find((member) => user?.user_id === member.member_id);
+        setCurrentMember(currentMember);
+      }
     }
     if (group === selectedGroup) return;
     if (selectedGroup) {
@@ -359,7 +368,7 @@ const GroupsPage = () => {
     setMessages([]);
     setExpenses([]);
     setCombined([]);
-    joinRoom(group.group_id);
+    if (group) joinRoom(group.group_id);
   }
   const addExpense = async (expenseInfo: FormData) => {
     const res = await axiosInstance.post(`${API_URLS.addGroupExpense}/${selectedGroup?.group_id}`, expenseInfo, { withCredentials: true });
@@ -382,6 +391,11 @@ const GroupsPage = () => {
       selectedGroup!.balance_amount = JSON.stringify(parseFloat(selectedGroup!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
       toast.success("Settlement added successfully")
     }
+  }
+
+  const handleGroupDetailsOpen = (open: boolean) => {
+    setScrollHeight(0);
+    setGroupDetailsOpen(open);
   }
 
   return (
@@ -431,23 +445,18 @@ const GroupsPage = () => {
                             </ListItemAvatar>
                             <ListItemText
                               primary={
-                                <Box className="flex justify-between">
+                                <Box className="flex justify-between content-center items-center">
                                   <Box>{group.group_name}</Box>
-                                  <Box className="flex gap-2">{group.balance_amount} {(activeButton === "invites" && group.status === "RECEIVER") ? <>
-                                    <button onClick={() => handleAcceptRejectRequest(group.group_id, "ACCEPTED")}><Check /></button>
-                                    <button onClick={() => handleAcceptRejectRequest(group.group_id, "REJECTED")}><Clear /></button>
-                                  </> : null}</Box>
+                                  <Box className="flex gap-2 items-center" sx={{ color: parseFloat(group.balance_amount) < 0 ? 'red' : 'green' }}>
+                                    <Box sx={{ verticalAlign: "middle" }}>
+                                      <CurrencyRupee sx={{ p: 0, m: 0 }} fontSize="inherit" />{Math.abs(parseFloat(group.balance_amount))}
+                                    </Box>
+                                    {(activeButton === "invites" && group.status === "RECEIVER") ? <>
+                                      <button onClick={() => handleAcceptRejectRequest(group.group_id, "ACCEPTED")}><Check /></button>
+                                      <button onClick={() => handleAcceptRejectRequest(group.group_id, "REJECTED")}><Clear /></button>
+                                    </> : null}</Box>
                                 </Box>
                               }
-                            // secondary={
-                            //   <Typography
-                            //     component="span"
-                            //     variant="body2"
-                            //     sx={{ color: 'text.primary', display: 'inline' }}
-                            //   >
-                            //     {GroupData.GroupData.email}
-                            //   </Typography>
-                            // }
                             />
                           </ListItemButton>
                         </ListItem>
@@ -465,77 +474,93 @@ const GroupsPage = () => {
             <Stack className="flex flex-col h-full bg-[white] rounded-lg">
               {
                 selectedGroup ?
-                  <>
-                    <Box><Header handleSettlement={handleSettlement} group={selectedGroup} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
-                    <Divider />
-                    <Box ref={messageContainer} className="h-[67vh] overflow-auto">
-                      {loading && (
-                        <div
-                          className={classes.loader}
-                        />
-                      )}
-                      {
-                        view === "Messages" ?
-                          messages.map((message) => (
-                            <MessageItem
-                              message={{ text: message.message, createdAt: format(new Date(message.createdAt), "hh:mm a") }}
-                              isCurrentUser={message.sender_id === currentMember?.group_membership_id}
-                              name={message.senderName}
-                              imageUrl="/vite.svg"
-                              currentUserImageUrl="/vite.svg"
-                            />
-                          )) : null
-                      }
-                      {
-                        view === "Expenses" ?
-                          expenses.map((expense) => (
-                            <ExpenseItem
-                              key={expense.group_expense_id}
-                              expense={expense}
-                              isCurrentUserPayer={expense.payer_id === currentMember?.group_membership_id}
-                              imageUrl="vite.svg"
-                              currentUserImageUrl="vite.svg"
-                              name={expense.payer}
-                            // onRetryExpenseAddition={handleRetry}
-                            />
-                          )) : null
-                      }
-                      {
-                        view === "All" ?
-                          combined.map((item) => {
-                            if ("group_expense_id" in item) {
-                              return (
-                                <ExpenseItem
-                                  key={item.group_expense_id}
-                                  expense={item}
-                                  isCurrentUserPayer={item.payer_id === currentMember?.group_membership_id}
-                                  imageUrl="vite.svg"
-                                  currentUserImageUrl="vite.svg"
-                                  name={item.payer}
-                                // onRetryExpenseAddition={handleRetry}
-                                />
-                              )
-                            }
+                  groupDetailsOpen ?
+                    <GroupDetails group={selectedGroup} groupMembers={groupMembers!} currentMember={currentMember!} handleGroupDetailsClose={() => handleGroupDetailsOpen(false)} />
+                    :
+                    <>
+                      <Box><Header handleGroupDetailsOpen={() => handleGroupDetailsOpen(true)} handleBackButton={() => handleSelectGroupData(undefined)} handleSettlement={handleSettlement} group={selectedGroup} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
+                      <Divider />
+                      <Box ref={messageContainer} className="h-[67vh] overflow-auto">
+                        {loading && (
+                          <div
+                            className={classes.loader}
+                          />
+                        )}
+                        {
+                          view === "Messages" ?
+                            messages.map((message) => (
+                              <MessageItem
+                                message={{ text: message.message, createdAt: format(new Date(message.createdAt), "hh:mm a") }}
+                                isCurrentUser={message.sender_id === currentMember?.group_membership_id}
+                                name={message.senderName}
+                                imageUrl="/vite.svg"
+                                currentUserImageUrl="/vite.svg"
+                              />
+                            )) : null
+                        }
+                        {
+                          view === "Expenses" ?
+                            expenses.map((expense) => (
+                              <ExpenseItem
+                                key={expense.group_expense_id}
+                                expense={expense}
+                                isCurrentUserPayer={expense.payer_id === currentMember?.group_membership_id}
+                                imageUrl="vite.svg"
+                                currentUserImageUrl="vite.svg"
+                              // onRetryExpenseAddition={handleRetry}
+                              />
+                            )) : null
+                        }
+                        {
+                          view === "All" ?
+                            combined.map((item) => {
+                              if ("group_expense_id" in item) {
+                                return (
+                                  <ExpenseItem
+                                    key={item.group_expense_id}
+                                    expense={item}
+                                    isCurrentUserPayer={item.payer_id === currentMember?.group_membership_id}
+                                    imageUrl="vite.svg"
+                                    currentUserImageUrl="vite.svg"
+                                  // onRetryExpenseAddition={handleRetry}
+                                  />
+                                )
+                              }
 
-                            if ("group_message_id" in item) {
-                              return (
-                                <MessageItem
-                                  message={{ text: item.message, createdAt: format(new Date(item.createdAt), "hh:mm a") }}
-                                  isCurrentUser={item.sender_id === currentMember?.group_membership_id}
-                                  name={item.senderName}
-                                  imageUrl="/vite.svg"
-                                  currentUserImageUrl="/vite.svg"
-                                />
-                              )
+                              if ("group_message_id" in item) {
+                                return (
+                                  <MessageItem
+                                    message={{ text: item.message, createdAt: format(new Date(item.createdAt), "hh:mm a") }}
+                                    isCurrentUser={item.sender_id === currentMember?.group_membership_id}
+                                    name={item.senderName}
+                                    imageUrl="/vite.svg"
+                                    currentUserImageUrl="/vite.svg"
+                                  />
+                                )
+                              }
+
+                              if ("group_settlement_id" in item) {
+                                const payer = groupMembers!.find((member) => member.group_membership_id === item.payer_id);
+                                const debtor = groupMembers!.find((member) => member.group_membership_id === item.debtor_id);
+                                return (
+                                  <SettlementCard
+                                    isCurrentUserPayer={item.payer_id === currentMember?.group_membership_id}
+                                    payerImageUrl={payer!.image_url}
+                                    payerName={`${payer!.first_name} ${payer!.last_name}`}
+                                    debtorName={`${debtor!.first_name} ${debtor!.last_name}`}
+                                    settlement={item}
+                                    currentUserImageUrl={currentMember!.image_url}
+                                  />
+                                )
+                              }
                             }
-                          }
-                          )
-                          : null
-                      }
-                    </Box>
-                    <Divider />
-                    <Box><MessageInput handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
-                  </>
+                            )
+                            : null
+                        }
+                      </Box>
+                      <Divider />
+                      <Box><MessageInput handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
+                    </>
                   :
                   // <Box className="flex flex-col justify-center content-center items-center h-100">
                   //   <Typography className="text-blue-700" align="center">Select a group to have chat with or to add expense</Typography>

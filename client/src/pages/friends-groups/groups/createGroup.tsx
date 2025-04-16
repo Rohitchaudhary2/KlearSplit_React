@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import Button from '@mui/joy/Button';
 import { motion } from "framer-motion";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Close } from "@mui/icons-material";
 import SelectMembersDialog from "./selectMembers";
 // import { createGroup } from "./services";
@@ -37,11 +37,15 @@ const VisuallyHiddenInput = styled('input')`
 interface CreateGroupProps {
     open: boolean;
     handleClose: () => void;
+    group?: GroupData;
+    handleUpdateGroup?: (group: GroupData) => void;
     setGroups?: React.Dispatch<React.SetStateAction<GroupData[]>>;
 }
 
 const CreateGroup: React.FC<CreateGroupProps> = ({
     open,
+    group,
+    handleUpdateGroup,
     handleClose,
     setGroups,
 }) => {
@@ -52,6 +56,12 @@ const CreateGroup: React.FC<CreateGroupProps> = ({
     const [image, setImage] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [dialogOpen, setDialogOpen] = useState(false);
+    useEffect(() => {
+        if (group) {
+            setGroupName(group.group_name);
+            setGroupDescription(group.group_description);
+        }
+    }, [])
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -78,17 +88,28 @@ const CreateGroup: React.FC<CreateGroupProps> = ({
         formData.append("membersData", JSON.stringify(membersData));
         if (image) formData.append("image", image);
         try {
+            if (group) {
+                const formData= new FormData();
+                formData.append("group_name", groupName as string);
+                formData.append("group_description", groupDescription as string);
+                if(image) formData.append("image", image);
+                const res = await axiosInstance.patch(`${API_URLS.group}/${group.group_id}`, formData, { withCredentials: true })
+                handleUpdateGroup!(res.data.data);
+                toast.success("Group Updated successfully!")
+                handleClose()
+                return;
+            }
             const res = await axiosInstance.post<CreateGroupResponse>(
                 `${API_URLS.createGroup}`,
                 formData,
                 { withCredentials: true }
             );
-            const group = res.data.data
+            const groupRes = res.data.data
             toast.success("Group created successfully");
             if (setGroups) {
                 setGroups((prevGroups) => [
                     {
-                        ...group,
+                        ...groupRes,
                         status: "ACCEPTED",
                         role: "CREATOR",
                         has_archived: false,
@@ -277,30 +298,35 @@ const CreateGroup: React.FC<CreateGroupProps> = ({
                                 )}
                             </div>
 
-                            <Button
-                                variant="solid"
-                                color="primary"
-                                fullWidth
-                                onClick={handleAddMembers}
-                            >
-                                Add Members
-                            </Button>
+                            {
+                                !group &&
+                                <>
+                                    <Button
+                                        variant="solid"
+                                        color="primary"
+                                        fullWidth
+                                        onClick={handleAddMembers}
+                                    >
+                                        Add Members
+                                    </Button>
 
-                            {selectedMembers.length > 0 && (
-                                <div className="mt-4 max-h-40 overflow-y-auto bg-gray-50 rounded p-2 text-sm">
-                                    {selectedMembers.map((user, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="flex justify-between border-b py-1"
-                                        >
-                                            <span>
-                                                {user.first_name} {user.last_name}
-                                            </span>
-                                            <span className="text-gray-500">{user.role}</span>
+                                    {selectedMembers.length > 0 && (
+                                        <div className="mt-4 max-h-40 overflow-y-auto bg-gray-50 rounded p-2 text-sm">
+                                            {selectedMembers.map((user, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="flex justify-between border-b py-1"
+                                                >
+                                                    <span>
+                                                        {user.first_name} {user.last_name}
+                                                    </span>
+                                                    <span className="text-gray-500">{user.role}</span>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
-                            )}
+                                    )}
+                                </>
+                            }
                         </DialogContent>
                         <DialogActions>
                             <Button onClick={onClose}>Cancel</Button>

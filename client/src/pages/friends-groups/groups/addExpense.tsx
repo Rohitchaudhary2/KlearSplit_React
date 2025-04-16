@@ -107,7 +107,12 @@ const AddExpense: React.FC<{
     };
     const [isFormInvalid, setIsFormInvalid] = useState(true);
     const isValid = !Object.entries(expenseInfo).every(([key, value]) => !validateField(key, value!));
-    useEffect(() => setIsFormInvalid(isValid), [isValid])
+    useEffect(() => setIsFormInvalid(isValid), [isValid]);
+
+    const handleSplitTypeSubmit = (splitType:string, debtors: Debtor[]) => {
+        setExpenseInfo((prev) => ({...prev, "split_type": splitType}))
+        setDebtors(debtors);
+    }
 
     const handleSubmit = async () => {
         let debtorsArr: Debtor[] = [];
@@ -134,12 +139,13 @@ const AddExpense: React.FC<{
             debtorsArr = debtorsArr.filter((debtor) => expenseInfo.payer_id !== debtor.debtor_id);
             setPayerShare(payer_share);
             setDebtors(debtorsArr);
+        } else {
+            const payer = debtors.find((debtor) => expenseInfo.payer_id === debtor.debtor_id);
+            payer_share = payer ? payer.debtor_share : 0;
+            debtorsArr = debtors.filter((debtor) => expenseInfo.payer_id !== debtor.debtor_id);
+            setDebtors(debtorsArr);
+            setPayerShare(payer_share);
         }
-
-        // Exit the function if the form is not valid
-        //   if (!form.valid) {
-        //     return;
-        //   }
 
         const formData = new FormData();
         // Loop through each form control and append values to formData
@@ -158,13 +164,8 @@ const AddExpense: React.FC<{
         });
 
         formData.append("payer_share", `${payer_share ? payer_share.toString() : payerShare!.toString()}`);
-        formData.append("debtors", JSON.stringify(debtorsArr.length ? debtorsArr : debtors));
+        formData.append("debtors", JSON.stringify(debtorsArr));
         
-
-        //   handleAddExpense({
-        //     formData,
-        //     expenseData: { ...expenseInfo, debtors: this.debtors, payer_share: this.payer_share }
-        // });
         handleAddExpense(formData);
           handleAddExpensesClose();
 
@@ -175,21 +176,6 @@ const AddExpense: React.FC<{
             payer_id: currentMember.group_membership_id,
             split_type: "EQUAL",
         });
-        // Close the dialog and pass the formData and other relevant expense data
-        //   this.dialogRef.close({
-        //     formData: formData,
-        //     expenseData: { ...expenseInfo, debtors: this.debtors, payer_share: this.payer_share },
-        //   });
-        // expenseInfo.debtor_id = expenseInfo.payer_id === user?.user_id ? friend.user_id : user!.user_id;
-        // expenseInfo.debtor_share = expenseInfo.debtor_id === user?.user_id ? expenseInfo.participant1_share : expenseInfo.participant2_share
-        // const formData = new FormData();
-        // Object.keys(expenseInfo).forEach((key) => {
-        // const value = expenseInfo[
-        //     key as keyof typeof expenseInfo
-        // ] as unknown;
-
-
-        // });
     }
     const payerChange = (selectedId: string) => {
         setExpenseInfo((prev) => ({ ...prev, "payer_id": selectedId }));
@@ -208,6 +194,7 @@ const AddExpense: React.FC<{
                         participants={participants}
                         splitState={splitState}
                         open={splitTypeOpen}
+                        handleSplitTypeSubmit={handleSplitTypeSubmit}
                         handleSplitTypeClose={handleSplitTypeClose}
                         handleShareChange={handleShareChange}
                     />
