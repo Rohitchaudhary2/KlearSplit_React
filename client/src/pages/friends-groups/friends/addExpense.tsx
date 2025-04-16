@@ -10,6 +10,7 @@ import Payer from "./payer"
 import { motion } from "framer-motion"
 import SplitType from "./splitType"
 import CustomDialog from "../../../components/base/customModal"
+import { Expense } from "./index.model"
 
 const VisuallyHiddenInput = styled('input')`
   clip: rect(0 0 0 0);
@@ -25,10 +26,11 @@ const VisuallyHiddenInput = styled('input')`
 
 const AddExpense: React.FC<{
     open: boolean,
-    friend: User
+    friend: User,
+    expense?: Expense
     handleAddExpensesClose: () => void,
     handleAddExpense: (expenseInfo: FormData) => void
-}> = ({ open, friend, handleAddExpensesClose, handleAddExpense }) => {
+}> = ({ open, friend, expense, handleAddExpensesClose, handleAddExpense }) => {
     const user = useSelector((store: RootState) => store.auth.user)
     const [expenseInfo, setExpenseInfo] = useState({
         expense_name: "",
@@ -41,6 +43,46 @@ const AddExpense: React.FC<{
         split_type: "EQUAL",
         debtor_share: ""
     });
+    useEffect(() => {
+        if(expense) {
+            let participant1_share = "";
+            let participant2_share = "";
+            const isUserPayer = expense.payer_id === user?.user_id;
+            switch(expense.split_type) {
+                case "EQUAL": {
+                    participant1_share = JSON.stringify(parseFloat(expense.total_amount) / 2);
+                    participant2_share = JSON.stringify(parseFloat(expense.total_amount) / 2);
+                    break;
+                }
+                case "UNEQUAL": {
+                    participant1_share = isUserPayer ? 
+                    JSON.stringify(parseFloat(expense.total_amount) - parseFloat(expense.debtor_amount)) :
+                    expense.debtor_amount
+                    participant2_share = !isUserPayer ? 
+                    JSON.stringify(parseFloat(expense.total_amount) - parseFloat(expense.debtor_amount)) :
+                    expense.debtor_amount
+                    break;
+                }
+                case "PERCENTAGE": {
+                    const payerPercentage = JSON.stringify(Math.round((parseFloat(expense.total_amount) - parseFloat(expense.debtor_amount)) / parseFloat(expense.total_amount)) * 100);
+                    const debtorPercentage = JSON.stringify(Math.round(parseFloat(expense.debtor_amount) / parseFloat(expense.total_amount)) * 100);
+                    participant1_share = isUserPayer ? payerPercentage : debtorPercentage;
+                    participant2_share = !isUserPayer ? payerPercentage : debtorPercentage;
+                }
+            }
+            setExpenseInfo({
+                expense_name: expense.expense_name,
+                total_amount: expense.total_amount,
+                description: expense.description ?? "",
+                payer_id: expense.payer_id,
+                debtor_id: expense.debtor_id,
+                participant1_share,
+                participant2_share,
+                split_type: expense.split_type,
+                debtor_share: "",
+            });
+        }
+    },[])
     const [errors, setErrors] = useState({
         expense_name: "",
         total_amount: "",
@@ -113,8 +155,13 @@ const AddExpense: React.FC<{
                 }
             }
         });
-        handleAddExpense(formData);
-        handleAddExpensesClose();
+        if(expense) {
+            formData.append("friend_expense_id", expense.friend_expense_id);
+            handleAddExpense(formData);
+        } else {
+            handleAddExpense(formData);
+            handleAddExpensesClose();
+        }
         setExpenseInfo({
             expense_name: "",
             total_amount: "",

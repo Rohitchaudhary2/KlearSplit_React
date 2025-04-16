@@ -1,4 +1,4 @@
-import { PersonAdd, Search } from "@mui/icons-material";
+import { Group, PersonAdd, Search } from "@mui/icons-material";
 import { Paper } from "@mui/material";
 import React, { useState } from "react";
 import AddFriend from "../../friends/addFriend";
@@ -39,7 +39,7 @@ const SearchBar: React.FC<{ placeholder: string; }> = ({ placeholder }) => {
                             placeholder === "Search using group name..." ? setCreateGroupOpen(true) : setAddFriendOpen(true)
                         }}
                     >
-                        <PersonAdd />
+                        {placeholder === "Search using group name..." ? <Group/> : <PersonAdd />}
                     </button>
                     </Paper>
                 </div>

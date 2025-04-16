@@ -8,6 +8,8 @@ import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
 import { Expense, Friend } from "./index.model";
 import { format } from "date-fns";
+import AddExpense from "./addExpense";
+import { toast } from "sonner";
 
 const ViewExpenses: React.FC<{
     open: boolean,
@@ -18,6 +20,15 @@ const ViewExpenses: React.FC<{
 }) => {
         const [loading, setLoading] = useState(false);
         const [expenses, setExpenses] = useState<Expense[]>([]);
+        const [updateExpenseOpen, setUpdateExpenseOpen] = useState(false);
+        const [expenseToBeUpdated, setExpenseToBeUpdated] = useState<Expense>();
+        useEffect(() => {
+            if(expenseToBeUpdated) {
+                setUpdateExpenseOpen(true);
+            } else {
+                setUpdateExpenseOpen(false)
+            }
+        }, [expenseToBeUpdated])
         useEffect(() => {
             setLoading(true);
             const fetchExpenses = async() => {
@@ -67,8 +78,30 @@ const ViewExpenses: React.FC<{
             // Save the generated PDF with the filename 'expense_report.pdf'
             doc.save("expense_report.pdf");
         }
+        const onUpdateExpense = (expense: Expense) => {
+            setExpenseToBeUpdated(expense);
+        }
+        const handleAddExpense = async(expenseInfo: FormData) => {
+            const res = await axiosInstance.patch(`${API_URLS.updateExpense}/${friend.conversation_id}`, expenseInfo, {withCredentials: true});
+            if(res.data.success) toast.success("Expense Updated successfully!");
+            handleAddExpensesClose();
+        }
+        const handleAddExpensesClose = () => {
+            setExpenseToBeUpdated(undefined);
+        }
         return (
-            <Modal open={open} onClose={() => handleViewExpensesClose()}>
+            <>
+            {
+                updateExpenseOpen && 
+                <AddExpense
+                    open={updateExpenseOpen}
+                    friend={friend.friend}
+                    expense={expenseToBeUpdated!}
+                    handleAddExpense={handleAddExpense}
+                    handleAddExpensesClose={handleAddExpensesClose}
+                />
+            }
+                <Modal open={open} onClose={() => handleViewExpensesClose()}>
                 <ModalDialog layout="center"
                     sx={{
                         backgroundColor: "#A1E3F9",
@@ -141,8 +174,8 @@ const ViewExpenses: React.FC<{
                                                     <td className="px-2 py-1 flex justify-center items-center space-x-2">
                                                         {/* Update Icon */}
                                                         <button
-                                                            // onClick={() => onUpdateExpense(expense)}
-                                                            // onKeyUp={(e) => e.key === 'Enter' && onUpdateExpense(expense)}
+                                                            onClick={() => onUpdateExpense(expense)}
+                                                            onKeyUp={(e) => e.key === 'Enter' && onUpdateExpense(expense)}
                                                             className="hover:text-blue-500"
                                                             aria-label="Update"
                                                         >
@@ -194,6 +227,7 @@ const ViewExpenses: React.FC<{
                     </Box>
                 </ModalDialog>
             </Modal>
+            </>
         )
     }
 
