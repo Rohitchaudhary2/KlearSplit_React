@@ -5,21 +5,18 @@ import Button from '@mui/joy/Button';
 import classes from './index.module.css';
 import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
-import { Friend, GroupData, GroupMemberData } from "./index.model";
+import { GroupMemberData } from "./index.model";
 
 const Settlement: React.FC<{
     open: boolean,
     handleSettlementClose: () => void,
     handleSettlement: (settlementAmount: number) => void,
-    selectedGroup: GroupData,
+    settlement_amount: number,
     payer: GroupMemberData,
     debtor: GroupMemberData
-}> = ({ open, handleSettlementClose, handleSettlement, selectedGroup, payer, debtor }) => {
+}> = ({ open, handleSettlementClose, handleSettlement, settlement_amount, payer, debtor }) => {
     const user = useSelector((store: RootState) => store.auth.user)
-    const totalAmount = Math.abs(
-        parseFloat(selectedGroup.balance_amount),
-      );
-    const [settlementAmount, setSettlementAmount] = useState(totalAmount);
+    const [settlementAmount, setSettlementAmount] = useState(settlement_amount);
     const onChange = (value: string) => setSettlementAmount(parseFloat(value));
     const handleSubmit = () => {
         handleSettlement(settlementAmount);

@@ -3,7 +3,7 @@ import { Modal, DialogTitle, Box, Typography, Avatar, Divider, ListItem, ListIte
 import { useEffect, useState } from "react"
 import Button from '@mui/joy/Button';
 import { motion } from "framer-motion"
-import { Debtors, GroupMemberData } from "./index.model";
+import { GroupMemberData } from "./index.model";
 
 interface Debtor {
     debtor_id: string;
@@ -15,7 +15,7 @@ const SplitType: React.FC<{
     participants: GroupMemberData[],
     splitState: any
     open: boolean,
-    handleSplitTypeSubmit: (splitType:string, debtors: Debtor[]) => void,
+    handleSplitTypeSubmit: (splitType:string, debtors: Debtor[], selectedParticipants: GroupMemberData[]) => void,
     handleShareChange: (key: string, value: string) => void
     handleSplitTypeClose: () => void
 }> = ({ open, handleSplitTypeClose, totalAmount, participants, splitState, handleSplitTypeSubmit, handleShareChange }) => {
@@ -54,12 +54,26 @@ const SplitType: React.FC<{
         if (splitState) {
             setSplitType(splitState.split_type);
             setSelectedParticipants(splitState.selectedParticipants);
+            const newShares: Record<string, number> = {};
             splitState.debtors.forEach((debtor: { debtor_id: string, debtor_share: number }) => {
-                calculatedShares[debtor.debtor_id] = debtor.debtor_share;
+                newShares[debtor.debtor_id] = debtor.debtor_share;
             }); // Set the calculated shares
-            calculatedShares[splitState.payerId] = splitState.payerShare;
-            setStoredShare();
-            updateRemainingTotal();
+            newShares[splitState.payerId] = splitState.payerShare;
+            // setStoredShare();
+            setCalculatedShares(newShares);
+            if (splitState.split_type === "UNEQUAL") {
+                setUnequalShares({ ...newShares });
+            } else if (splitState.split_type === "PERCENTAGE") {
+                setPercentageShares({ ...newShares });
+            }
+            const total = Object.values(newShares).reduce(
+                (acc, val) => acc + (val || 0),
+                0
+            );
+            setRemainingTotal(splitState.split_type === "UNEQUAL"
+                ? totalAmount - total
+                : 100 - total);
+            // updateRemainingTotal();
         } else {
             // Default behavior if no previous state is provided
             initializeShares();
@@ -175,9 +189,9 @@ const SplitType: React.FC<{
     const handleSubmit = () => {
         const debtors = selectedParticipants.map((participant) => ({
             debtor_id: participant.group_membership_id,
-            debtor_share: calculatedShares[participant.group_membership_id] || 0,
+            debtor_share: splitType === "EQUAL" ? totalAmount/selectedParticipants.length : (calculatedShares[participant.group_membership_id] || 0),
         })).filter((debtor) => debtor.debtor_share !== 0);
-        handleSplitTypeSubmit(splitType, debtors);
+        handleSplitTypeSubmit(splitType, debtors, selectedParticipants);
         handleSplitTypeClose()
     }
 

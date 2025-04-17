@@ -40,6 +40,9 @@ const GroupsPage = () => {
   const [currentMember, setCurrentMember] = useState<GroupMemberData>();
   const [groupMembers, setGroupMembers] = useState<GroupMemberData[]>();
   const [groupDetailsOpen, setGroupDetailsOpen] = useState(false);
+  const [loaders, setLoaders] = useState({
+    addExpense: false,
+  })
 
   const [timestampMessages, setTimestampMessages] = useState<string>(
     new Date().toISOString()
@@ -478,7 +481,10 @@ const GroupsPage = () => {
                     <GroupDetails group={selectedGroup} groupMembers={groupMembers!} currentMember={currentMember!} handleGroupDetailsClose={() => handleGroupDetailsOpen(false)} />
                     :
                     <>
-                      <Box><Header handleGroupDetailsOpen={() => handleGroupDetailsOpen(true)} handleBackButton={() => handleSelectGroupData(undefined)} handleSettlement={handleSettlement} group={selectedGroup} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
+                      <Box><Header 
+                      currentMember={currentMember!}
+                      groupMembers={groupMembers!}
+                      handleGroupDetailsOpen={() => handleGroupDetailsOpen(true)} handleBackButton={() => handleSelectGroupData(undefined)} group={selectedGroup} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
                       <Divider />
                       <Box ref={messageContainer} className="h-[67vh] overflow-auto">
                         {loading && (

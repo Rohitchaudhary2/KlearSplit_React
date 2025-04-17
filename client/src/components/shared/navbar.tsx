@@ -22,6 +22,7 @@ const pages = ["Dashboard", 'Friends', 'Groups'];
 function ResponsiveAppBar() {
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
+  const [active, setActive] = React.useState("Dashboard");
   const dispatch = useDispatch();
 
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
@@ -129,11 +130,23 @@ function ResponsiveAppBar() {
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
             {pages.map((page) => (
               <Button
+              onClickCapture={() => setActive(page)}
+              variant={active === page ? 'outlined' : 'text'}
                 key={page}
                 component={Link}
                 to={'/' + page.toLowerCase()}
                 onClick={handleCloseNavMenu}
-                sx={{ my: 2, color: 'white', display: 'block' }}
+                // sx={{ my: 2, color: 'white', display: 'block' }}
+                sx={{
+                  my: 2,
+                  color: 'white',
+                  display: 'block',
+                  borderColor: 'rgba(255, 255, 255, 0.7)', // white with opacity
+                  '&:hover': {
+                    borderColor: 'rgba(255, 255, 255, 1)', // stronger on hover
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)', // optional light background on hover
+                  }
+                }}
               >
                 {page}
               </Button>

@@ -799,42 +799,44 @@ class GroupService {
       // Adding expense participnts in database
       const updatedExpenseParticipants = await GroupDb.addExpenseParticipants(debtors, transaction);
 
-      updatedExpenseParticipants.forEach((participant) => {
-        const oldData = {};
+      // updatedExpenseParticipants.forEach((participant) => {
+      //   const oldData = {};
 
-        if (participant.createdAt !== participant.updatedAt) {
-          oldData.oldData = prevParticipants.find((previous) => previous.expense_participant_id === participant.dataValues.expense_participant_id).dataValues;
-        }
+      //   if (participant.createdAt !== participant.updatedAt) {
+      //     console.log(prevParticipants.find((previous) => previous.expense_participant_id === participant.dataValues.expense_participant_id), "lkjh");
           
-        logs.push(auditLogFormat(participant.createdAt === participant.updatedAt ? "INSERT" : "UPDATE", userId, "group_expense_participants", participant.expense_participant_id, { ...oldData, "newData": participant.dataValues }));
-      });
+      //     oldData.oldData = prevParticipants.find((previous) => previous.expense_participant_id === participant.dataValues.expense_participant_id).dataValues;
+      //   }
+          
+      //   logs.push(auditLogFormat(participant.createdAt === participant.updatedAt ? "INSERT" : "UPDATE", userId, "group_expense_participants", participant.expense_participant_id, { ...oldData, "newData": participant.dataValues }));
+      // });
 
       const [ updatedBalance, affectedRows ] = await GroupDb.updateMemberBalanceByPk(updatedMembersBalance, transaction);
 
-      if (affectedRows) {
-        updatedBalance.forEach((balance) => {
-          const oldData = {};
+      // if (affectedRows) {
+      //   updatedBalance.forEach((balance) => {
+      //     const oldData = {};
 
-          if (balance.createdAt !== balance.updatedAt) {
-            let debtorRole = "";
+      //     if (balance.createdAt !== balance.updatedAt) {
+      //       let debtorRole = "";
 
-            const balanceAmount = debtors.find((debtor) => {
-              if (debtor.debtor_id === balance.participant1_id) {
-                debtorRole = "participant1";
-              } else if (debtor.debtor_id === balance.participant2_id) {
-                debtorRole = "participant2";
-              }
-              return debtorRole;
-            }).debtor_amount ?? 0;
+      //       const balanceAmount = debtors.find((debtor) => {
+      //         if (debtor.debtor_id === balance.participant1_id) {
+      //           debtorRole = "participant1";
+      //         } else if (debtor.debtor_id === balance.participant2_id) {
+      //           debtorRole = "participant2";
+      //         }
+      //         return debtorRole;
+      //       }).debtor_amount ?? 0;
 
-            oldData.oldData = {
-              "balance_id": balance.balance_id,
-              "balance_amount": (parseFloat(balance.balance_amount) + (debtorRole === "participant1" ? balanceAmount : -balanceAmount)).toFixed(2)
-            };
-          }
-          logs.push(auditLogFormat(balance.createdAt === balance.updatedAt ? "INSERT" : "UPDATE", userId, "group_member_balance", balance.balance_id, { ...oldData, "newData": balance }));
-        });
-      }
+      //       oldData.oldData = {
+      //         "balance_id": balance.balance_id,
+      //         "balance_amount": (parseFloat(balance.balance_amount) + (debtorRole === "participant1" ? balanceAmount : -balanceAmount)).toFixed(2)
+      //       };
+      //     }
+      //     logs.push(auditLogFormat(balance.createdAt === balance.updatedAt ? "INSERT" : "UPDATE", userId, "group_member_balance", balance.balance_id, { ...oldData, "newData": balance }));
+      //   });
+      // }
       
       await transaction.commit();
       AuditLogService.createLog(logs, true);

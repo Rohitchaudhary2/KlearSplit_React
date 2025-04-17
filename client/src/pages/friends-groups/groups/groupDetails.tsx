@@ -23,6 +23,7 @@ const GroupDetails: React.FC<GroupDetailsProps> = ({ handleGroupDetailsClose, gr
     const [open, setOpen] = useState(false);
     const [groupData, setGroupData] = useState<GroupData>(group);
     const [settlementOpen, setSettlementOpen] = useState(false);
+    const [settlementAmount, setSettlementAmount] = useState(0);
     const [payer, setPayer] = useState<GroupMemberData>();
     const [debtor, setDebtor] = useState<GroupMemberData>();
     useEffect(() => {
@@ -50,6 +51,7 @@ const GroupDetails: React.FC<GroupDetailsProps> = ({ handleGroupDetailsClose, gr
         setSettlementOpen(false);
     }
     const handleSettlementOpen = (member: GroupMemberData) => {
+        setSettlementAmount(Math.abs(parseFloat(member.balance_with_user)));
         if(parseFloat(member.balance_with_user) == 0) {
             toast.warning("You are all settled up!")
         } else if(parseFloat(member.balance_with_user) < 0) {
@@ -77,7 +79,7 @@ const GroupDetails: React.FC<GroupDetailsProps> = ({ handleGroupDetailsClose, gr
                 <Settlement
                     handleSettlementClose={handleSettlementClose}
                     handleSettlement={handleSettlementSubmit}
-                    selectedGroup={group}
+                    settlement_amount={settlementAmount}
                     open={settlementOpen}
                     payer={payer!}
                     debtor={debtor!}

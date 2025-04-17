@@ -35,6 +35,9 @@ const Friendspage = () => {
   const pageSize = 20;
   const [scrollHeight, setScrollHeight] = useState(0);
   const user = useSelector((store: RootState) => store.auth.user)
+  const [loaders, setLoaders] = useState({
+    addExpense: false
+  })
 
   const [timestampMessages, setTimestampMessages] = useState<string>(
     new Date().toISOString()
@@ -287,6 +290,7 @@ const Friendspage = () => {
     joinRoom(friend.conversation_id);
   }
   const addExpense = async (expenseInfo: FormData) => {
+    setLoaders((prev) => ({...prev, addExpense: true}));
     const res = await axiosInstance.post(`${API_URLS.addExpense}/${selectedFriend?.conversation_id}`, expenseInfo, { withCredentials: true });
     if (res.data.success) {
       setCombined((prev) => [...prev, res.data.data]);
@@ -294,6 +298,7 @@ const Friendspage = () => {
       selectedFriend!.balance_amount = JSON.stringify(parseFloat(selectedFriend!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
       toast.success("Expense Added successfully")
     }
+    setLoaders((prev) => ({...prev, addExpense: false}))
   }
   const handleSettlement = async (settlementAmount: number) => {
     const res = await axiosInstance.post(
@@ -450,7 +455,7 @@ const Friendspage = () => {
                       }
                     </Box>
                     <Divider />
-                    <Box><MessageInput handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
+                    <Box><MessageInput loader={loaders.addExpense} handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
                   </>
                   :
                   <Box className="flex flex-col justify-center content-center items-center h-100">

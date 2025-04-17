@@ -2,28 +2,22 @@ import { ArrowBack, MoreVert } from "@mui/icons-material"
 import { Avatar, Box, FormControl, IconButton, ListItemAvatar, Menu, MenuItem, Select, SelectChangeEvent, Typography } from "@mui/material"
 import { useState } from "react";
 import ViewExpenses from "./viewExpenses";
-import Settlement from "./settlement";
-import { GroupData } from "./index.model";
+import { GroupData, GroupMemberData } from "./index.model";
 import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
 
-const Header: React.FC<{group: GroupData, handleGroupDetailsOpen: () => void, handleBackButton: () => void, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, handleSettlement: (settlementAmount: number) => void,view: string}> = ({group, handleGroupDetailsOpen, handleBackButton, handleViewChange, handleSettlement, view}) => {
+const Header: React.FC<{group: GroupData, currentMember: GroupMemberData, groupMembers: GroupMemberData[], handleGroupDetailsOpen: () => void, handleBackButton: () => void, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, view: string}> = ({group, currentMember, groupMembers, handleGroupDetailsOpen, handleBackButton, handleViewChange, view}) => {
   const [blockStatus, setBlockStatus] = useState(group.has_blocked ? "Unblock" : "Block");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const [viewExpensesOpen, setViewExpensesOpen] = useState(false);
-  const [settlementOpen, setSettlementOpen] = useState(false);
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
   const handleClose = () => {
     setAnchorEl(null);
   };
-  const settlement = () => {
-    setSettlementOpen(true);
-  }
-  const handleSettlementClose = () => setSettlementOpen(false);
   const viewChange = (e: SelectChangeEvent) => handleViewChange(e.target.value as "All" | "Messages" | "Expenses");
   const viewExpenses = () => {
     setViewExpensesOpen(true);
@@ -36,9 +30,6 @@ const Header: React.FC<{group: GroupData, handleGroupDetailsOpen: () => void, ha
     }
   }
   const handleViewExpensesClose = () => setViewExpensesOpen(false);
-  const addSettlement = (settlementAmount: number) => {
-    handleSettlement(settlementAmount)
-  }
   const onLeaveGroup = () => {
 
   }
@@ -46,7 +37,10 @@ const Header: React.FC<{group: GroupData, handleGroupDetailsOpen: () => void, ha
     <>
     {/* <Settlement handleSettlement={addSettlement} selectedGroup={group} open={settlementOpen} handleSettlementClose={handleSettlementClose}/> */}
     <Box className="flex justify-between p-2 content-center">
-      <ViewExpenses group={group} open={viewExpensesOpen} handleViewExpensesClose={handleViewExpensesClose}/>
+      {
+        viewExpensesOpen &&
+        <ViewExpenses currentMember={currentMember} groupMembers={groupMembers} group={group} open={viewExpensesOpen} handleViewExpensesClose={handleViewExpensesClose}/>
+      }
       <Box className="flex justify-between gap-2 items-center">
         <ArrowBack className="cursor-pointer" onClick={handleBackButton}/>
         <ListItemAvatar sx={{ minWidth: 32 }}>
@@ -88,10 +82,10 @@ const Header: React.FC<{group: GroupData, handleGroupDetailsOpen: () => void, ha
           <MenuItem onClick={handleGroupDetailsOpen}>
             Group Details
           </MenuItem>
-          <MenuItem onClick={settlement}>
+          <MenuItem onClick={handleGroupDetailsOpen}>
             Add Members
           </MenuItem>
-          <MenuItem onClick={settlement}>
+          <MenuItem onClick={handleGroupDetailsOpen}>
             Settle Up
           </MenuItem>
           <MenuItem onClick={viewExpenses}>

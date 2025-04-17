@@ -10,7 +10,7 @@ import Payer from "./payer"
 import { motion } from "framer-motion"
 import SplitType from "./splitType"
 import CustomDialog from "../../../components/base/customModal"
-import { GroupData, GroupMemberData } from "./index.model"
+import { GroupData, GroupExpenseData, GroupMemberData } from "./index.model"
 
 interface Debtor {
     debtor_id: string;
@@ -33,9 +33,10 @@ const AddExpense: React.FC<{
     participants: GroupMemberData[],
     currentMember: GroupMemberData
     group: GroupData
+    expense?: GroupExpenseData
     handleAddExpensesClose: () => void,
     handleAddExpense: (expenseInfo: FormData) => void
-}> = ({ open, participants, currentMember, handleAddExpensesClose, handleAddExpense }) => {
+}> = ({ open, participants, currentMember, group, expense, handleAddExpensesClose, handleAddExpense }) => {
     const user = useSelector((store: RootState) => store.auth.user);
     const [selectedParticipants, setSelectedParticipants] = useState<GroupMemberData[]>([...participants]);
     const [payerShare, setPayerShare] = useState<number>();
@@ -47,7 +48,7 @@ const AddExpense: React.FC<{
         payer_id: currentMember.group_membership_id,
         split_type: "EQUAL",
     });
-    const [splitState, setSplitShare] = useState({
+    const [splitState, setSplitState] = useState({
         split_type: expenseInfo.split_type,
         selectedParticipants, // Already populated from the previous split dialog
         debtors, // Shares for the participants
@@ -62,6 +63,38 @@ const AddExpense: React.FC<{
     const [dialogOpen, setDialogOpen] = useState(false);
     const [PayerDialogOpen, setPayerDialogOpen] = useState(false);
     const [splitTypeOpen, setSplitTypeOpen] = useState(false);
+    useEffect(() => {
+        if(expense) {
+            const selectedParticipantsIds = expense.participants.map((participant) => participant.debtor_id)
+            const selectedParticipants = selectedParticipantsIds.map((id) => participants.find((participant) => participant.group_membership_id === id)!);
+            selectedParticipants.push(participants.find((participant) => participant.group_membership_id === expense.payer_id)!)
+            const debtors = expense.participants.map((participant) => ({
+                "debtor_id": participant.debtor_id, 
+                "debtor_share": expense.split_type === "UNEQUAL" ?
+                    parseFloat(participant.debtor_amount) :
+                    Math.round((parseFloat(participant.debtor_amount) / parseFloat(expense.total_amount)) * 100)
+            }));
+            
+            setExpenseInfo((prev) => ({
+                ...prev,
+                "expense_name": expense.expense_name,
+                "description": expense.description ?? "",
+                "payer_id": expense.payer_id,
+                "split_type": expense.split_type,
+                "total_amount": expense.total_amount
+            }))
+            setSplitState((prev) => ({
+                ...prev,
+                selectedParticipants,
+                "split_type": expense.split_type,
+                debtors,
+                "payerId": expense.payer_id,
+                "payerShare": expense.split_type === "UNEQUAL" ?
+                    parseFloat(expense.total_amount) - parseFloat(expense.total_debt_amount) :
+                    Math.round((parseFloat(expense.total_amount) - parseFloat(expense.total_debt_amount)) / parseFloat(expense.total_amount) * 100)
+            }))
+        }
+    }, [])
     const handlePayerDialogOpen = () => {
         setPayerDialogOpen(true);
     }
@@ -109,9 +142,10 @@ const AddExpense: React.FC<{
     const isValid = !Object.entries(expenseInfo).every(([key, value]) => !validateField(key, value!));
     useEffect(() => setIsFormInvalid(isValid), [isValid]);
 
-    const handleSplitTypeSubmit = (splitType:string, debtors: Debtor[]) => {
+    const handleSplitTypeSubmit = (splitType:string, debtors: Debtor[], selectedParticipants: GroupMemberData[]) => {
         setExpenseInfo((prev) => ({...prev, "split_type": splitType}))
         setDebtors(debtors);
+        setSelectedParticipants(selectedParticipants);
     }
 
     const handleSubmit = async () => {
@@ -165,9 +199,8 @@ const AddExpense: React.FC<{
 
         formData.append("payer_share", `${payer_share ? payer_share.toString() : payerShare!.toString()}`);
         formData.append("debtors", JSON.stringify(debtorsArr));
-        
         handleAddExpense(formData);
-          handleAddExpensesClose();
+        handleAddExpensesClose();
 
         setExpenseInfo({
             expense_name: "",
