@@ -13,7 +13,7 @@ import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
 import { Check, Clear, CurrencyRupee } from "@mui/icons-material";
 import { toast } from "sonner";
-import { GroupData, GroupExpenseData, GroupMemberData, GroupMessageData, GroupSettlementData } from "./index.model";
+import { ExpenseParticipant, GroupData, GroupExpenseData, GroupMemberData, GroupMessageData, GroupSettlementData } from "./index.model";
 import { useSocket } from "../shared/search-bar/socket";
 import { format } from "date-fns";
 import classes from './index.module.css'
@@ -220,7 +220,6 @@ const GroupsPage = () => {
 
         } catch (error) {
           console.error("Error fetching data:", error);
-          // Optionally show error state here
         } finally {
           setLoading(() => false); // Only done when all above are finished (or errored)
         }
@@ -243,9 +242,31 @@ const GroupsPage = () => {
               const combined = sortBycreatedAt(res.data.data);
               if (combined.length < 20) setAllCombinedLoaded(true);
               if (combined.length) setTimestampCombined(combined[0].createdAt);
-              // combined.unshift(...combined);
-              // setCombined(() => combined);
-              setCombined((prev) => [...combined, ...prev]);
+              const combinedWithName = combined.map((item) => {
+                if ("group_message_id" in item) {
+                  const sender = getFullNameAndImage(groupMembers!.find((member) =>
+                    item.sender_id === member.group_membership_id
+                  ));
+                  return {
+                    ...item,
+                    senderName: sender.fullName,
+                    senderImage: sender.imageUrl
+                  };
+                } else if ("group_expense_id" in item) {
+                  if (item.payer_id === currentMember?.group_membership_id) {
+                    item.payer = getFullNameAndImage(currentMember);
+                  } else {
+                    const payer = groupMembers!.find((member) => item.payer_id === member.group_membership_id);
+                    item.payer = getFullNameAndImage(payer);
+                  }
+                  return item
+                } else {
+                  const debtor = groupMembers!.find((member) => item.debtor_id === member.group_membership_id);
+                  item.debtor = getFullNameAndImage(debtor);
+                  return item;
+                }
+              })
+              setCombined((prev) => [...combinedWithName, ...prev]);
               setScrollHeight(scrollHeight);
               setLoading(() => false)
             }
@@ -258,10 +279,20 @@ const GroupsPage = () => {
                 params: { pageSize, timestamp: timestampMessages },
                 withCredentials: true
               });
-              const messages = sortBycreatedAt(res.data.data);
+              const messages = res.data.data.sort((a: GroupMessageData, b: GroupMessageData) => (a.createdAt < b.createdAt ? -1 : 1))
               if (messages.length < 20) setAllMessagesLoaded(true);
               if (messages.length) setTimestampMessages(messages[0].createdAt);
-              setMessages((prev) => [...messages as GroupMessageData[], ...prev])
+              const messagesWithName = messages.map((message: GroupMessageData) => {
+                const sender = getFullNameAndImage(groupMembers!.find((member) =>
+                  message.sender_id === member.group_membership_id
+                ));
+                return {
+                  ...message,
+                  senderName: sender.fullName,
+                  senderImage: sender.imageUrl
+                };
+              });
+              setMessages((prev) => [...messagesWithName as GroupMessageData[], ...prev])
               setScrollHeight(scrollHeight);
               setLoading(() => false)
             }
@@ -269,14 +300,26 @@ const GroupsPage = () => {
           }
           case "Expenses": {
             if (!allExpensesLoaded && expenses.length) {
-              setLoading(true)
+              setLoading(true);
               const res = await axiosInstance.get(`${API_URLS.fetchExpensesSettlements}/${selectedGroup?.group_id}`, {
                 params: { pageSize, timestamp: timestampExpenses },
                 withCredentials: true
               });
-              const expenses = sortBycreatedAt(res.data.data);
+              const expenses = res.data.data.sort((a: GroupExpenseData | GroupSettlementData, b: GroupExpenseData | GroupSettlementData) => (a.createdAt < b.createdAt ? -1 : 1))
               if (expenses.length < 20) setAllExpensesLoaded(true);
               if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
+              expenses.forEach((expense: GroupExpenseData | GroupSettlementData) => {
+                if (expense.payer_id === currentMember?.group_membership_id) {
+                  expense.payer = getFullNameAndImage(currentMember);
+                } else {
+                  const payer = groupMembers!.find((member) => expense.payer_id === member.group_membership_id);
+                  expense.payer = getFullNameAndImage(payer);
+                }
+                if ("group_settlement_id" in expense) {
+                  const debtor = groupMembers!.find((member) => expense.debtor_id === member.group_membership_id);
+                  expense.debtor = getFullNameAndImage(debtor);
+                }
+              });
               setExpenses((prev) => [...expenses as GroupExpenseData[], ...prev]);
               setScrollHeight(scrollHeight)
               setLoading(false)
@@ -374,13 +417,16 @@ const GroupsPage = () => {
     if (group) joinRoom(group.group_id);
   }
   const addExpense = async (expenseInfo: FormData) => {
+    setLoaders((prev) => ({...prev, addExpense: true}));
     const res = await axiosInstance.post(`${API_URLS.addGroupExpense}/${selectedGroup?.group_id}`, expenseInfo, { withCredentials: true });
     if (res.data.success) {
-      setCombined((prev) => [...prev, res.data.data]);
-      setExpenses((prev) => [...prev, res.data.data]);
-      selectedGroup!.balance_amount = JSON.stringify(parseFloat(selectedGroup!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
+      const debtorAmount = res.data.data.expenseParticipants.reduce((acc: number, val: ExpenseParticipant) => acc + parseFloat(val.debtor_amount), 0)      
+      setCombined((prev) => [...prev, {...res.data.data.expense, "total_debt_amount": debtorAmount}]);
+      setExpenses((prev) => [...prev, {...res.data.data.expense, "total_debt_amount": debtorAmount}]);
+      selectedGroup!.balance_amount = JSON.stringify(Math.round((parseFloat(selectedGroup!.balance_amount) + (currentMember?.group_membership_id === res.data.data.expense.payer_id ? debtorAmount : -debtorAmount))*100) / 100);
       toast.success("Expense Added successfully")
     }
+    setLoaders((prev) => ({...prev, addExpense: false}));
   }
   const handleSettlement = async (settlementAmount: number) => {
     const res = await axiosInstance.post(
@@ -565,7 +611,7 @@ const GroupsPage = () => {
                         }
                       </Box>
                       <Divider />
-                      <Box><MessageInput handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
+                      <Box><MessageInput loader={loaders.addExpense} handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
                     </>
                   :
                   // <Box className="flex flex-col justify-center content-center items-center h-100">

@@ -8,7 +8,7 @@ const ExpenseItem: React.FC<{
   imageUrl: string;
   currentUserImageUrl: string;
   name: string;
-}> = ({ expense, isCurrentUserPayer, imageUrl, currentUserImageUrl, name, }) => {
+}> = ({ expense, isCurrentUserPayer, imageUrl, currentUserImageUrl, name }) => {
   const startsWithPrefix = (id: string, prefix: string) => id.startsWith(prefix);
   const onRetryExpenseAddition = (id: string) => {
     console.log(id);

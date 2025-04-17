@@ -293,8 +293,9 @@ const Friendspage = () => {
     setLoaders((prev) => ({...prev, addExpense: true}));
     const res = await axiosInstance.post(`${API_URLS.addExpense}/${selectedFriend?.conversation_id}`, expenseInfo, { withCredentials: true });
     if (res.data.success) {
-      setCombined((prev) => [...prev, res.data.data]);
-      setExpenses((prev) => [...prev, res.data.data]);
+      const expense = {...res.data.data, "payer": res.data.data.payer_id === user?.user_id ? "You" : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}`}
+      setCombined((prev) => [...prev, expense]);
+      setExpenses((prev) => [...prev, expense]);
       selectedFriend!.balance_amount = JSON.stringify(parseFloat(selectedFriend!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
       toast.success("Expense Added successfully")
     }
@@ -307,8 +308,9 @@ const Friendspage = () => {
       { withCredentials: true }
     )
     if (res.data.success) {
-      setCombined((prev) => [...prev, res.data.data]);
-      setExpenses((prev) => [...prev, res.data.data]);
+      const settlement = {...res.data.data, "payer": res.data.data.payer_id === user?.user_id ? "You" : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}`}
+      setCombined((prev) => [...prev, settlement]);
+      setExpenses((prev) => [...prev, settlement]);
       selectedFriend!.balance_amount = JSON.stringify(parseFloat(selectedFriend!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
       toast.success("Settlement added successfully")
     }
