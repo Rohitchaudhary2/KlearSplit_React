@@ -4,6 +4,7 @@ import { PieChart, BarChart, axisClasses } from '@mui/x-charts';
 import { API_URLS } from "../../constants/apiUrls";
 import classes from "./index.module.css"
 import axiosInstance from "../../utils/axiosInterceptor";
+import { toast } from "sonner";
 
 interface PieChartData {
     id: number,
@@ -39,50 +40,80 @@ const DashboardPage = () => {
             }
         };
         const getExpensesCount = async () => {
-            const data = await axiosInstance.get(API_URLS.expensesCount, { withCredentials: true });
+            try {
+                const data = await axiosInstance.get(API_URLS.expensesCount, { withCredentials: true });
 
-            setExpensesCount(data.data.data.map((value: number, index: number) => ({
-                id: index,
-                value,
-                label: ["0-1000", "1000-5000", "5000-10000", "10000-15000", "15000+"][index],
-                color: pieChartColors[index]
-            })));
+                setExpensesCount(data.data.data.map((value: number, index: number) => ({
+                    id: index,
+                    value,
+                    label: ["0-1000", "1000-5000", "5000-10000", "10000-15000", "15000+"][index],
+                    color: pieChartColors[index]
+                })));
 
-            setLoaders((prev) => ({ ...prev, expenseCount: false }));
+            } catch (error) {
+                toast.error("Something went wrong, please try again later!")
+            } finally {
+                setLoaders((prev) => ({ ...prev, expenseCount: false }));
+            }
         }
         const getBalance = async () => {
-            const data = await axiosInstance.get(API_URLS.balanceAmounts, { withCredentials: true });
+            try {
+                const data = await axiosInstance.get(API_URLS.balanceAmounts, { withCredentials: true });
 
-            setBalanceAmounts(data.data.data.map((value: number, index: number) => ({
-                id: index,
-                value,
-                label: ["Amount Lent", "Amount Borrowed"][index],
-                color: ["#27AE60", "#E74C3C"][index]
-            })));
-            setBalanceAmount(data.data.data[0] - data.data.data[1]);
-            setLoaders((prev) => ({ ...prev, "balance": false }))
+                setBalanceAmounts(data.data.data.map((value: number, index: number) => ({
+                    id: index,
+                    value,
+                    label: ["Amount Lent", "Amount Borrowed"][index],
+                    color: ["#27AE60", "#E74C3C"][index]
+                })));
+
+                setBalanceAmount(
+                    Math.round((data.data.data[0] - data.data.data[1]) * 100) / 100
+                );
+
+            } catch (error) {
+                toast.error("Something went wrong, please try again later!");
+            } finally {
+                setLoaders((prev) => ({ ...prev, balance: false }));
+            }
         }
         const getCashFlowFriends = async () => {
-            const data = await axiosInstance.get(API_URLS.cashFlowFriends, { withCredentials: true });
-            const response: { amount: number; friend: string }[] = Object.values(data.data.data);
-            setTopCashFlowPartners(response.map((val: { "amount": number, "friend": string }, index: number) => ({
-                id: index,
-                value: val.amount,
-                label: val.friend,
-                color: pieChartColors[index]
-            })));
-            setLoaders((prev) => ({ ...prev, "cashFlowPartners": false }))
+            try {
+                const data = await axiosInstance.get(API_URLS.cashFlowFriends, { withCredentials: true });
+
+                const response: { amount: number; friend: string }[] = Object.values(data.data.data);
+
+                setTopCashFlowPartners(response.map((val: { amount: number, friend: string }, index: number) => ({
+                    id: index,
+                    value: val.amount,
+                    label: val.friend,
+                    color: pieChartColors[index]
+                })));
+
+            } catch (error) {
+                toast.error("Something went wrong, please try again later!");
+            } finally {
+                setLoaders((prev) => ({ ...prev, cashFlowPartners: false }));
+            }
         }
         const getCashFlowGroups = async () => {
-            const data = await axiosInstance.get(API_URLS.cashFlowGroups, { withCredentials: true });
-            const response: { amount: number; group: string }[] = Object.values(data.data.data);
-            setTopCashFlowGroups(response.map((val: { "amount": number, "group": string }, index: number) => ({
-                id: index,
-                value: val.amount,
-                label: val.group,
-                color: pieChartColors[index]
-            })));
-            setLoaders((prev) => ({ ...prev, "cashFlowGroups": false }))
+            try {
+                const data = await axiosInstance.get(API_URLS.cashFlowGroups, { withCredentials: true });
+
+                const response: { amount: number; group: string }[] = Object.values(data.data.data);
+
+                setTopCashFlowGroups(response.map((val: { amount: number, group: string }, index: number) => ({
+                    id: index,
+                    value: val.amount,
+                    label: val.group,
+                    color: pieChartColors[index]
+                })));
+
+            } catch (error) {
+                toast.error("Something went wrong, please try again later!");
+            } finally {
+                setLoaders((prev) => ({ ...prev, cashFlowGroups: false }));
+            }
         }
         getExpensesCount()
         getBalance()
@@ -101,9 +132,14 @@ const DashboardPage = () => {
     }, [])
     useEffect(() => {
         const getMonthlyexpenses = async () => {
-            const data = await axiosInstance.post(API_URLS.monthlyExpenses, { year }, { withCredentials: true });
-            setMonthlyExpenses(data.data.data);
-            setLoaders((prev) => ({ ...prev, "monthlyExpenses": false }))
+            try {
+                const data = await axiosInstance.post(API_URLS.monthlyExpenses, { year }, { withCredentials: true });
+                setMonthlyExpenses(data.data.data);
+            } catch (error) {
+                toast.error("Something went wrong, please try again later!");
+            } finally {
+                setLoaders((prev) => ({ ...prev, monthlyExpenses: false }));
+            }
         }
         getMonthlyexpenses();
     }, [year])
@@ -408,7 +444,7 @@ const DashboardPage = () => {
                                 },
                             }
                             }
-                            margin={{ top: 10, bottom: 30, left: Math.max(...monthlyExpenses).toString().length * 10 + 30, right: 10 }}
+                            margin={{ top: 10, bottom: 30, left: Math.max(...monthlyExpenses).toString().length * 2 + 30, right: 10 }}
                         />
                     </Stack>
                 </Paper></div>
