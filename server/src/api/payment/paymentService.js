@@ -92,7 +92,7 @@ class PaymentService {
     const { type, id, success, paymentId, PayerID, userId } = req.query;
 
     if (success === "false") {
-      return `http://localhost:4200/${type}?id=${id}&success=false`;
+      return `http://localhost:5173/${type}?id=${id}&success=false`;
     }
 
     const payment = await PaymentDb.getPayment(paymentId);
@@ -141,13 +141,13 @@ class PaymentService {
         }
         default:
           // Return failure URL if type is unknown
-          return `http://localhost:4200/${type}?id=${id}&success=false`;
+          return `http://localhost:5173/${type}?id=${id}&success=false`;
       }
 
       AuditLogService.createLog(logs, true);
   
       // Return success URL once all operations are completed
-      return `http://localhost:4200/${type}?id=${id}&success=true`;
+      return `http://localhost:5173/${type}?id=${id}&success=true`;
   
     } catch (error) {
       // If there's an error, return a failure URL with success=false
@@ -160,7 +160,7 @@ class PaymentService {
       Object.assign(payment, { "payment_status": "FAILED" });
       await payment.save();
       AuditLogService.createLog(auditLogFormat("UPDATE", userId, "payments", payment.id, { "oldData": oldPayment, "newData": payment.dataValues }));
-      return `http://localhost:4200/${type}?id=${id}&success=false`;
+      return `http://localhost:5173/${type}?id=${id}&success=false`;
     }
   };
 }

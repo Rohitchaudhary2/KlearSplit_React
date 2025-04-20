@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import classes from './index.module.css'
 import GroupDetails from "./groupDetails";
 import SettlementCard from "./settlementDisplay";
+import { useNavigate } from "react-router-dom";
 
 const GroupsPage = () => {
   const [activeButton, setActiveButton] = useState("groups");
@@ -44,6 +45,7 @@ const GroupsPage = () => {
     addExpense: false,
   })
 
+  const navigate = useNavigate()
   const [timestampMessages, setTimestampMessages] = useState<string>(
     new Date().toISOString()
   );
@@ -64,6 +66,23 @@ const GroupsPage = () => {
     leaveRoom,
   } = useSocket()
 
+  useEffect(() => {
+    if (groupInvites.length || groups.length) {
+      const searchParams = new URLSearchParams(location.search);
+      const id = searchParams.get('id');
+      const success = searchParams.get('success');
+      const AllGroups = [...groupInvites, ...groups];
+        const group = AllGroups.find((group) => group.group_id === id);
+        setselectedGroup(group);
+      if (success === "true") {
+        toast.success("Payment successful");
+      }
+      if (success === "false") {
+        toast.error("Transaction failed")
+      }
+      navigate(location.pathname, { replace: true });
+    }
+  }, [groupInvites, groups])
   useEffect(() => {
     const handleNewMessage = (message: GroupMessageData) => {
       const sender = getFullNameAndImage(groupMembers!.find((member) =>

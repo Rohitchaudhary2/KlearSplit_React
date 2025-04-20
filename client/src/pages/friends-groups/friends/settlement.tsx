@@ -6,6 +6,8 @@ import classes from './index.module.css';
 import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
 import { Friend } from "./index.model";
+import axiosInstance from "../../../utils/axiosInterceptor";
+import { API_URLS } from "../../../constants/apiUrls";
 
 const Settlement: React.FC<{
     open: boolean,
@@ -50,10 +52,25 @@ const Settlement: React.FC<{
             payerId = selectedFriend.friend.user_id;
         }
     }
-    const onChange = (value: string) => setSettlementAmount(parseFloat(value));
+    const onChange = (value: string) => {
+        if(isNaN(parseFloat(value))) value = "0"
+        setSettlementAmount(parseFloat(value) ?? 0)
+    };
     const handleSubmit = () => {
         handleSettlement(settlementAmount);
         handleSettlementClose()
+    }
+    const payWithPayPal = async() => {
+        const res = await axiosInstance.post(`${API_URLS.createPayment}`, {
+            amount: settlementAmount,
+            id: selectedFriend.conversation_id,
+            payerId,
+            debtorId,
+            type: "friends"
+        })
+        if(res.data.data) {
+            window.location.href = res.data.data;
+          }
     }
     return (
         <Modal open={open} onClose={() => handleSettlementClose()}>
@@ -92,14 +109,14 @@ const Settlement: React.FC<{
                         variant="outlined"
                         name="settlement_amount"
                         value={settlementAmount}
-                        onChange={(e) => onChange(e.target.value.trim())}
+                        onChange={(e) => onChange(e.target.value.trim() ?? "0")}
                         fullWidth
                     // error={!!errors.total_amount}
                     // helperText={errors.total_amount}
                     />
                     <Box className="flex flex-col gap-3">
                         <Button variant="outlined" onClick={handleSubmit}>Record as cash Payment</Button>
-                        <Button variant="outlined" disabled={payerId !== user?.user_id}>Pay using Paypal</Button>
+                        <Button variant="outlined" onClick={payWithPayPal} disabled={payerId !== user?.user_id}>Pay using Paypal</Button>
                     </Box>
                     <Box className="flex justify-end items-center p-3">
                         <Button onClick={handleSettlementClose}>

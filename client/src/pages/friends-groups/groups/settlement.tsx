@@ -6,6 +6,8 @@ import classes from './index.module.css';
 import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
 import { GroupMemberData } from "./index.model";
+import { API_URLS } from "../../../constants/apiUrls";
+import axiosInstance from "../../../utils/axiosInterceptor";
 
 const Settlement: React.FC<{
     open: boolean,
@@ -17,10 +19,25 @@ const Settlement: React.FC<{
 }> = ({ open, handleSettlementClose, handleSettlement, settlement_amount, payer, debtor }) => {
     const user = useSelector((store: RootState) => store.auth.user)
     const [settlementAmount, setSettlementAmount] = useState(settlement_amount);
-    const onChange = (value: string) => setSettlementAmount(parseFloat(value));
+    const onChange = (value: string) => {
+        if(isNaN(parseFloat(value))) value = "0"
+        setSettlementAmount(parseFloat(value) ?? 0)
+    }
     const handleSubmit = () => {
         handleSettlement(settlementAmount);
         handleSettlementClose()
+    }
+    const payWithPayPal = async() => {
+        const res = await axiosInstance.post(`${API_URLS.createPayment}`, {
+            amount: settlementAmount,
+            id: payer.group_id,
+            payerId: payer.group_membership_id,
+            debtorId: debtor.group_membership_id,
+            type: "groups"
+        })
+        if(res.data.data) {
+            window.location.href = res.data.data;
+          }
     }
     return (
         <Modal open={open} onClose={() => handleSettlementClose()}>
@@ -64,7 +81,7 @@ const Settlement: React.FC<{
                     />
                     <Box className="flex flex-col gap-3">
                         <Button variant="outlined" onClick={handleSubmit}>Record as cash Payment</Button>
-                        <Button variant="outlined">Pay using Paypal</Button>
+                        <Button variant="outlined" onClick={payWithPayPal}>Pay using Paypal</Button>
                     </Box>
                     <Box className="flex justify-end items-center p-3">
                         <Button onClick={handleSettlementClose}>

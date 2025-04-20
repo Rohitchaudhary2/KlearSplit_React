@@ -17,6 +17,7 @@ import { Expense, Friend, Message } from "./index.model";
 import { useSocket } from "../shared/search-bar/socket";
 import { format } from "date-fns";
 import classes from './index.module.css'
+import { useNavigate } from "react-router-dom";
 
 const Friendspage = () => {
   const [activeButton, setActiveButton] = useState<"friends" | "friendRequests">("friends");
@@ -40,7 +41,6 @@ const Friendspage = () => {
     friendRequests: false,
     friends: false
   })
-
   const [timestampMessages, setTimestampMessages] = useState<string>(
     new Date().toISOString()
   );
@@ -51,6 +51,7 @@ const Friendspage = () => {
     new Date().toISOString()
   );
 
+  const navigate = useNavigate()
   const currentUser = useSelector((store: RootState) => store.auth.user)
   const [selectedFriend, setSelectedFriend] = useState<Friend>();
   const {
@@ -60,6 +61,23 @@ const Friendspage = () => {
     removeNewMessageListener,
     leaveRoom,
   } = useSocket()
+  useEffect(() => {
+    if (friendRequests.length || friends.length) {
+      const searchParams = new URLSearchParams(location.search);
+      const id = searchParams.get('id');
+      const success = searchParams.get('success');
+      const AllFriends = [...friendRequests, ...friends];
+        const friend = AllFriends.find((friend) => friend.conversation_id === id);
+        setSelectedFriend(friend);
+      if (success === "true") {
+        toast.success("Payment successful");
+      }
+      if (success === "false") {
+        toast.error("Transaction failed")
+      }
+      navigate(location.pathname, { replace: true });
+    }
+  }, [friendRequests, friends])
 
   useEffect(() => {
     const handleNewMessage = (message: Message) => {

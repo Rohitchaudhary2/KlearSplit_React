@@ -2,14 +2,22 @@ import { Box, Button, ButtonGroup, Divider, IconButton, InputAdornment, Paper, T
 import { useEffect, useState } from "react";
 import { Avatar } from '@mui/joy';
 import { Email, Lock, Person, Phone, Visibility, VisibilityOff } from "@mui/icons-material";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../../store";
+import axiosInstance from "../../utils/axiosInterceptor";
+import { API_URLS } from "../../constants/apiUrls";
+import { login } from "../../store/authSlice";
+import { toast } from "sonner";
 
 const Profile = () => {
+    const user = useSelector((store: RootState) => store.auth.user)
     const [activeTab, setActiveTab] = useState("profile");
+    const dispatch = useDispatch();
     const [profileInfo, setProfileInfo] = useState({
-        first_name: '',
-        last_name: '',
-        email: '',
-        phone: ''
+        first_name: user!.first_name,
+        last_name: user!.last_name,
+        email: user!.email,
+        phone: user!.phone
     });
     const [passwords, setPasswords] = useState({
         currentPassword: '',
@@ -32,6 +40,17 @@ const Profile = () => {
         newPassword: false,
         confirmPassword: false
     });
+    const [image, setImage] = useState<File | null>(null);
+    const [previewImage, setPreviewImage] = useState<string>();
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Optionally upload to server here
+      setImage(file);
+      setPreviewImage(`assets/${file.name}`)
+    }
+  };
     const [isSaveChangesDisabled, setIsSaveChangesDisabled] = useState(true);
     const [isChangePasswordDisabled, setIsChangePasswordDisabled] = useState(true);
     const onChange = (key: string, value: string) => {
@@ -53,7 +72,7 @@ const Profile = () => {
                 else if (value.length > 20) return "Must not be greater than 20 characters";
                 break;
             case "confirmPassword":
-                if(passwords.newPassword !== value) return "Passwords do not match"
+                if (passwords.newPassword !== value) return "Passwords do not match"
         }
         return "";
     };
@@ -61,13 +80,13 @@ const Profile = () => {
         setPasswords((prev) => ({ ...prev, [key]: value }));
         setPasswordErrors((prev) => ({ ...prev, [key]: validatePasswordField(key, value) }));
     }
-    const handleClickShowPassword = (key: ("currentPassword" | "newPassword" | "confirmPassword")) => setShowPassword((prev) => ({...prev, [key]: !showPassword[key]}));
+    const handleClickShowPassword = (key: ("currentPassword" | "newPassword" | "confirmPassword")) => setShowPassword((prev) => ({ ...prev, [key]: !showPassword[key] }));
     useEffect(() => {
         const isValid = !Object.entries(passwords).every(([key, value]) => !validatePasswordField(key, value));
         setIsChangePasswordDisabled(isValid);
     }, [passwordsError])
     useEffect(() => {
-        const isValid = !Object.entries(profileInfo).every(([key, value]) => !validateField(key, value));
+        const isValid = !Object.entries(profileInfo).every(([key, value]) => !validateField(key, value!));
         setIsSaveChangesDisabled(isValid);
     }, [errors])
     const validateField = (name: string, value: string) => {
@@ -103,6 +122,28 @@ const Profile = () => {
         return errorMsg;
     };
     const handleViewChange = (view: string) => setActiveTab(view);
+    const handleUpdateProfile = async () => {
+        const formData = new FormData();
+        formData.append("first_name", profileInfo.first_name);
+        if(profileInfo.last_name) formData.append("last_name", profileInfo.last_name!);
+        if(profileInfo.phone) formData.append("phone", profileInfo.phone)
+        if(image) formData.append("profile", image)
+        const res = await axiosInstance.patch(`${API_URLS.updateProfile}/${user?.user_id}`, formData, { withCredentials: true });
+        toast.success("Profile Updated successfully!")
+        dispatch(login(res.data.data));
+    }
+    const handleChangePassword = async() => {
+        const res = await axiosInstance.patch(`${API_URLS.updateProfile}/${user?.user_id}`, {
+            "password": passwords.currentPassword,
+            "new_password": passwords.newPassword
+        }, { withCredentials: true });
+        toast.success("Password changed successfully")
+        setPasswords({
+            newPassword: "",
+            currentPassword: "",
+            confirmPassword: ""
+        })
+    }
     return (
         <Box className="flex flex-col min-h-[89vh] justify-center items-center content-center">
             <Paper square sx={{ borderRadius: "4px 4px 4px 4px" }} className="flex flex-col h-full md:h-6/7 w-full md:w-5/7" elevation={5}>
@@ -128,7 +169,21 @@ const Profile = () => {
                     activeTab === "profile"
                         ?
                         <Box className="grow min-h-100 h-full overflow-auto px-3 pb-3 flex flex-col gap-4 justify-center items-center">
-                            <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ height: 100, width: 100 }} />
+                            {/* <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ height: 100, width: 100 }} /> */}
+                            <input
+                                accept="image/*"
+                                id="avatar-upload"
+                                type="file"
+                                style={{ display: 'none' }}
+                                onChange={handleImageChange}
+                            />
+                            <label htmlFor="avatar-upload" style={{ cursor: 'pointer' }}>
+                                <Avatar
+                                    alt={`${user?.first_name} || Avatar`}
+                                    src={previewImage ?? user?.image_url ?? `vite.svg`}
+                                    sx={{ height: 100, width: 100 }}
+                                />
+                            </label>
                             <Box className="flex gap-3 w-full">
                                 <TextField
                                     label="First Name"
@@ -173,6 +228,7 @@ const Profile = () => {
                                 />
                             </Box>
                             <TextField
+                                disabled
                                 label="Email"
                                 required
                                 variant="outlined"
@@ -213,7 +269,7 @@ const Profile = () => {
                                     },
                                 }}
                             />
-                            <Button className="self-end" variant="contained" type="submit" disabled={isSaveChangesDisabled}>
+                            <Button className="self-end" variant="contained" type="submit" onClick={handleUpdateProfile} disabled={isSaveChangesDisabled}>
                                 Save Changes
                             </Button>
                         </Box>
@@ -327,7 +383,7 @@ const Profile = () => {
                                     }
                                 }}
                             />
-                            <Button className="self-end" variant="contained" type="submit" disabled={isChangePasswordDisabled}>
+                            <Button className="self-end" variant="contained" onClick={handleChangePassword} type="submit" disabled={isChangePasswordDisabled}>
                                 Change Password
                             </Button>
                         </Box>

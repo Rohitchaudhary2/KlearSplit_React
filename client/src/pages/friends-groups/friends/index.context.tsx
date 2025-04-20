@@ -37,10 +37,6 @@ export default function FriendContextProvider({ children }: { children: ReactNod
     }
 
     const handleFriendsChange = (friends: Friend[]) => {
-        console.log("kjhgfd");
-        
-        console.log(friends);
-        
         setFriends(friends);
     }
 
