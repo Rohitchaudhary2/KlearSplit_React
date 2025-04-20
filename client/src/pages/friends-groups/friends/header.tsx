@@ -9,9 +9,9 @@ import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
 
 const Header: React.FC<{friend: Friend, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, handleSettlement: (settlementAmount: number) => void,view: string}> = ({friend, handleViewChange, handleSettlement, view}) => {
-  const isBlock = friend.block_status === "BOTH" || (friend.block_status === "friend1" && friend.status === "SENDER") || (friend.block_status === "friend2" && friend.status === "RECEIVER")
+  const isBlock = friend.block_status === "BOTH" || (friend.block_status === "FRIEND1" && friend.status === "SENDER") || (friend.block_status === "FRIEND2" && friend.status === "RECEIVER")
   const [blockStatus, setBlockStatus] = useState(isBlock ? "Unblock" : "Block");
-  const isArchived = friend.archival_status === "BOTH" || (friend.archival_status === "friend1" && friend.status === "SENDER") || (friend.archival_status === "friend2" && friend.status === "RECEIVER")
+  const isArchived = friend.archival_status === "BOTH" || (friend.archival_status === "FRIEND1" && friend.status === "SENDER") || (friend.archival_status === "FRIEND2" && friend.status === "RECEIVER")
   const [archiveStatus, setArchiveStatus] = useState(isArchived ? "Unarchive" : "Archive");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -24,6 +24,10 @@ const Header: React.FC<{friend: Friend, handleViewChange: (view: "All" | "Messag
     setAnchorEl(null);
   };
   const settlement = () => {
+    if(parseFloat(friend.balance_amount)=== 0) {
+      toast.info("You are all settled up!");
+      return;
+    }
     setSettlementOpen(true);
   }
   const handleSettlementClose = () => setSettlementOpen(false);

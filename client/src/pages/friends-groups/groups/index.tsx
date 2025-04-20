@@ -1,6 +1,6 @@
 import { Avatar, Box, Button, ButtonGroup, Divider, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, Paper, Stack, Typography } from "@mui/material"
 import SearchBar from "../shared/search-bar"
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Header from "./header";
 import MessageInput from "./input";
 import MessageItem from "./message";
@@ -451,6 +451,7 @@ const GroupsPage = () => {
     <>
       {
         selectedGroup &&
+        currentMember &&
         <AddExpense
           group={selectedGroup}
           participants={groupMembers!}
@@ -484,7 +485,7 @@ const GroupsPage = () => {
                 {
                   (activeButton === "groups" ? groups : groupInvites).map((group) => {
                     return (
-                      <>
+                      <Fragment key={group.group_id}>
                         <ListItem disablePadding alignItems="flex-start" key={group.group_id} onClick={() => {
                           handleSelectGroupData(group);
                         }}>
@@ -510,7 +511,7 @@ const GroupsPage = () => {
                           </ListItemButton>
                         </ListItem>
                         <Divider />
-                      </>
+                      </Fragment>
                     )
                   })
                 }
@@ -522,7 +523,7 @@ const GroupsPage = () => {
           <Paper className="h-full" elevation={5}>
             <Stack className="flex flex-col h-full bg-[white] rounded-lg">
               {
-                selectedGroup ?
+                selectedGroup && currentMember ?
                   groupDetailsOpen ?
                     <GroupDetails group={selectedGroup} groupMembers={groupMembers!} currentMember={currentMember!} handleGroupDetailsClose={() => handleGroupDetailsOpen(false)} />
                     :
@@ -541,7 +542,7 @@ const GroupsPage = () => {
                         {
                           view === "Messages" ?
                             messages.map((message) => (
-                              <MessageItem
+                              <MessageItem key={message.group_message_id}
                                 message={{ text: message.message, createdAt: format(new Date(message.createdAt), "hh:mm a") }}
                                 isCurrentUser={message.sender_id === currentMember?.group_membership_id}
                                 name={message.senderName}
@@ -581,7 +582,7 @@ const GroupsPage = () => {
 
                               if ("group_message_id" in item) {
                                 return (
-                                  <MessageItem
+                                  <MessageItem key={item.group_message_id}
                                     message={{ text: item.message, createdAt: format(new Date(item.createdAt), "hh:mm a") }}
                                     isCurrentUser={item.sender_id === currentMember?.group_membership_id}
                                     name={item.senderName}
@@ -595,13 +596,13 @@ const GroupsPage = () => {
                                 const payer = groupMembers!.find((member) => member.group_membership_id === item.payer_id);
                                 const debtor = groupMembers!.find((member) => member.group_membership_id === item.debtor_id);
                                 return (
-                                  <SettlementCard
+                                  <SettlementCard key={item.group_settlement_id}
                                     isCurrentUserPayer={item.payer_id === currentMember?.group_membership_id}
                                     payerImageUrl={payer!.image_url}
                                     payerName={`${payer!.first_name} ${payer!.last_name}`}
                                     debtorName={`${debtor!.first_name} ${debtor!.last_name}`}
                                     settlement={item}
-                                    currentUserImageUrl={currentMember!.image_url}
+                                    currentUserImageUrl={currentMember!.image_url ?? "image.png"}
                                   />
                                 )
                               }

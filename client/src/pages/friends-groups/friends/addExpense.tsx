@@ -11,6 +11,9 @@ import { motion } from "framer-motion"
 import SplitType from "./splitType"
 import CustomDialog from "../../../components/base/customModal"
 import { Expense } from "./index.model"
+import axiosInstance from "../../../utils/axiosInterceptor"
+import { API_URLS } from "../../../constants/apiUrls"
+import { toast } from "sonner"
 
 const VisuallyHiddenInput = styled('input')`
   clip: rect(0 0 0 0);
@@ -27,10 +30,11 @@ const VisuallyHiddenInput = styled('input')`
 const AddExpense: React.FC<{
     open: boolean,
     friend: User,
-    expense?: Expense
+    expense?: Expense,
+    handleBulkAddExpenses: (expenses: Expense[]) => void
     handleAddExpensesClose: () => void,
     handleAddExpense: (expenseInfo: FormData) => void
-}> = ({ open, friend, expense, handleAddExpensesClose, handleAddExpense }) => {
+}> = ({ open, friend, expense, handleBulkAddExpenses,handleAddExpensesClose, handleAddExpense }) => {
     const user = useSelector((store: RootState) => store.auth.user)
     const [expenseInfo, setExpenseInfo] = useState({
         expense_name: "",
@@ -43,24 +47,25 @@ const AddExpense: React.FC<{
         split_type: "EQUAL",
         debtor_share: ""
     });
+    const [isBulkExpenseOptionOpen, setIsBulkExpenseOptionOpen] = useState(false);
     useEffect(() => {
-        if(expense) {
+        if (expense) {
             let participant1_share = "";
             let participant2_share = "";
             const isUserPayer = expense.payer_id === user?.user_id;
-            switch(expense.split_type) {
+            switch (expense.split_type) {
                 case "EQUAL": {
                     participant1_share = JSON.stringify(parseFloat(expense.total_amount) / 2);
                     participant2_share = JSON.stringify(parseFloat(expense.total_amount) / 2);
                     break;
                 }
                 case "UNEQUAL": {
-                    participant1_share = isUserPayer ? 
-                    JSON.stringify(parseFloat(expense.total_amount) - parseFloat(expense.debtor_amount)) :
-                    expense.debtor_amount
-                    participant2_share = !isUserPayer ? 
-                    JSON.stringify(parseFloat(expense.total_amount) - parseFloat(expense.debtor_amount)) :
-                    expense.debtor_amount
+                    participant1_share = isUserPayer ?
+                        JSON.stringify(parseFloat(expense.total_amount) - parseFloat(expense.debtor_amount)) :
+                        expense.debtor_amount
+                    participant2_share = !isUserPayer ?
+                        JSON.stringify(parseFloat(expense.total_amount) - parseFloat(expense.debtor_amount)) :
+                        expense.debtor_amount
                     break;
                 }
                 case "PERCENTAGE": {
@@ -82,12 +87,15 @@ const AddExpense: React.FC<{
                 debtor_share: "",
             });
         }
-    },[])
+    }, [])
     const [errors, setErrors] = useState({
         expense_name: "",
         total_amount: "",
         description: ""
     })
+    const [csvError, setCsvError] = useState("");
+    const [isFileSelected, setIsFileSelected] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [PayerDialogOpen, setPayerDialogOpen] = useState(false);
     const [splitTypeOpen, setSplitTypeOpen] = useState(false);
@@ -139,6 +147,16 @@ const AddExpense: React.FC<{
     useEffect(() => setIsFormInvalid(isValid), [isValid])
 
     const handleSubmit = async () => {
+        if(isBulkExpenseOptionOpen) {
+            const formData = new FormData();
+            formData.append("file", selectedFile!, selectedFile!.name);
+            formData.append("tableName", "friends_expenses");
+            const res = await axiosInstance.post(`${API_URLS.bulkAddExpenses}/cb26317d-c3e5-4dfa-a18b-5a718d0409a6`, formData, {withCredentials: true})
+            toast.success("Expenses added successfully!")
+            handleBulkAddExpenses(res.data.data);
+            handleAddExpensesClose();
+            return;
+        }
         expenseInfo.debtor_id = expenseInfo.payer_id === user?.user_id ? friend.user_id : user!.user_id;
         expenseInfo.debtor_share = expenseInfo.debtor_id === user?.user_id ? expenseInfo.participant1_share : expenseInfo.participant2_share
         const formData = new FormData();
@@ -155,7 +173,7 @@ const AddExpense: React.FC<{
                 }
             }
         });
-        if(expense) {
+        if (expense) {
             formData.append("friend_expense_id", expense.friend_expense_id);
             handleAddExpense(formData);
         } else {
@@ -180,6 +198,42 @@ const AddExpense: React.FC<{
     const handleShareChange = (key: string, value: string) => {
         setExpenseInfo((prev) => ({ ...prev, [key]: value }))
     }
+    const onFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+
+        if (file) {
+            const fileName = file.name;
+            const fileExtension = fileName.split(".").pop()?.toLowerCase();
+
+            const isValidExtension = fileExtension === "csv";
+
+            if (isValidExtension) {
+                setIsFileSelected(true);
+                setSelectedFile(file);
+                setCsvError("");
+            } else {
+                setIsFileSelected(false);
+                setSelectedFile(null);
+                setCsvError(
+                    "Please select a .csv file only"
+                );
+            }
+        } else {
+            resetFileSelection();
+        }
+    }
+
+    const resetFileSelection = () => {
+        setIsFileSelected(false);
+        setSelectedFile(null);
+        setCsvError("")
+    }
+    const downloadFile = (fileUrl: string, fileName: string) => {
+        const link = document.createElement("a");
+        link.href = fileUrl;
+        link.download = fileName;
+        link.click();
+    };
     return (
         <>
             <CustomDialog open={dialogOpen} onClose={(value: boolean) => handleConfirmDialogClose(value)} title="Confirmation" message={`Are you sure to cancel adding expense? All the data entered will be lost.`} />
@@ -224,94 +278,133 @@ const AddExpense: React.FC<{
                         {/* <ModalClose onClick={() => handleViewExpensesClose()} /> */}
                         <DialogTitle className="bg-[#3674B5] text-center text-white" sx={{ borderRadius: "7px 7px 0px 0px" }}>Add Expense</DialogTitle>
                         <Box className="rounded bg-[white] flex flex-col gap-3 p-3">
-                            <TextField
-                                label="Expense Name"
-                                required
-                                variant="outlined"
-                                name="expense_name"
-                                value={expenseInfo.expense_name}
-                                onChange={(e) => onChange("expense_name", e.target.value)}
-                                onBlur={(e) => onChange("expense_name", e.target.value.trim())}
-                                fullWidth
-                                error={!!errors.expense_name}
-                                helperText={errors.expense_name}
-                            />
+                            {
+                                !isBulkExpenseOptionOpen ?
+                                    <>
+                                        <TextField
+                                            label="Expense Name"
+                                            required
+                                            variant="outlined"
+                                            name="expense_name"
+                                            value={expenseInfo.expense_name}
+                                            onChange={(e) => onChange("expense_name", e.target.value)}
+                                            onBlur={(e) => onChange("expense_name", e.target.value.trim())}
+                                            fullWidth
+                                            error={!!errors.expense_name}
+                                            helperText={errors.expense_name}
+                                        />
 
-                            <TextField
-                                label="Total Amount"
-                                required
-                                variant="outlined"
-                                name="total_amount"
-                                value={expenseInfo.total_amount}
-                                onChange={(e) => onChange("total_amount", e.target.value)}
-                                onBlur={(e) => onChange("total_amount", e.target.value.trim())}
-                                fullWidth
-                                error={!!errors.total_amount}
-                                helperText={errors.total_amount}
-                            />
-                            <TextField
-                                label="Description"
-                                variant="outlined"
-                                name="description"
-                                value={expenseInfo.description}
-                                onChange={(e) => onChange("description", e.target.value)}
-                                onBlur={(e) => onChange("description", e.target.value.trim())}
-                                fullWidth
-                                error={!!errors.description}
-                                helperText={errors.description}
-                            />
-                            <Box className="rounded-lg flex justify-center items-center gap-2">
-                                <Typography>Paid by</Typography>
-                                <Button disabled={isFormInvalid} sx={{ borderRadius: "50px" }} onClick={handlePayerDialogOpen} variant="outlined">
-                                    {
-                                        expenseInfo.payer_id === user?.user_id
-                                            ?
-                                            "you"
-                                            :
-                                            `${friend.first_name} ${friend.last_name}`
-                                    }
-                                </Button>
-                                <Typography>and split</Typography>
-                                <Button disabled={isFormInvalid} sx={{ borderRadius: "50px" }} onClick={handleSplitTypeOpen} variant="outlined">
-                                    {expenseInfo.split_type}
-                                </Button>
-                            </Box>
-                            <Button
-                                component="label"
-                                role={undefined}
-                                tabIndex={-1}
-                                variant="outlined"
-                                color="neutral"
-                                startDecorator={
-                                    <SvgIcon>
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            strokeWidth={1.5}
-                                            stroke="currentColor"
+                                        <TextField
+                                            label="Total Amount"
+                                            required
+                                            variant="outlined"
+                                            name="total_amount"
+                                            value={expenseInfo.total_amount}
+                                            onChange={(e) => onChange("total_amount", e.target.value)}
+                                            onBlur={(e) => onChange("total_amount", e.target.value.trim())}
+                                            fullWidth
+                                            error={!!errors.total_amount}
+                                            helperText={errors.total_amount}
+                                        />
+                                        <TextField
+                                            label="Description"
+                                            variant="outlined"
+                                            name="description"
+                                            value={expenseInfo.description}
+                                            onChange={(e) => onChange("description", e.target.value)}
+                                            onBlur={(e) => onChange("description", e.target.value.trim())}
+                                            fullWidth
+                                            error={!!errors.description}
+                                            helperText={errors.description}
+                                        />
+                                        <Box className="rounded-lg flex justify-center items-center gap-2">
+                                            <Typography>Paid by</Typography>
+                                            <Button disabled={isFormInvalid} sx={{ borderRadius: "50px" }} onClick={handlePayerDialogOpen} variant="outlined">
+                                                {
+                                                    expenseInfo.payer_id === user?.user_id
+                                                        ?
+                                                        "you"
+                                                        :
+                                                        `${friend.first_name} ${friend.last_name}`
+                                                }
+                                            </Button>
+                                            <Typography>and split</Typography>
+                                            <Button disabled={isFormInvalid} sx={{ borderRadius: "50px" }} onClick={handleSplitTypeOpen} variant="outlined">
+                                                {expenseInfo.split_type}
+                                            </Button>
+                                        </Box>
+                                        <Button
+                                            component="label"
+                                            role={undefined}
+                                            tabIndex={-1}
+                                            variant="outlined"
+                                            color="neutral"
+                                            startDecorator={
+                                                <SvgIcon>
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        strokeWidth={1.5}
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
+                                                        />
+                                                    </svg>
+                                                </SvgIcon>
+                                            }
                                         >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
+                                            Upload Receipt
+                                            <VisuallyHiddenInput type="file" />
+                                        </Button>
+                                    </> :
+                                    <>
+                                        <div className="file-upload-section space-y-4">
+                                            <input
+                                                type="file"
+                                                onChange={onFileSelected}
+                                                accept=".csv"
+                                                className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
                                             />
-                                        </svg>
-                                    </SvgIcon>
-                                }
-                            >
-                                Upload Receipt
-                                <VisuallyHiddenInput type="file" />
-                            </Button>
+
+                                            <Box className="flex flex-col gap-2">
+                                                <Button
+                                                    fullWidth
+                                                    onClick={() => downloadFile("sample.csv", "sample.csv")}
+                                                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+                                                >
+                                                    Download Sample CSV
+                                                </Button>
+
+                                                <Button
+                                                    fullWidth
+                                                    onClick={() => downloadFile("Instructions.pdf", "Instructions.pdf")}
+                                                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+                                                >
+                                                    Instructions For CSV
+                                                </Button>
+                                            </Box>
+                                            {csvError && (
+                                                <p className="text-red-600">Please select a .csv file only.</p>
+                                            )}
+                                        </div>
+                                    </>
+                            }
                             <Box className="flex justify-between items-center">
-                                <Button >
-                                    Bulk Insertion of Expenses
+                                <Button onClick={() => {
+                                    setIsBulkExpenseOptionOpen((prev) => !prev)
+                                    resetFileSelection()
+                                }}>
+                                    {!isBulkExpenseOptionOpen ? "Bulk Insertion of Expenses" : "Single Insertion"}
                                 </Button>
                                 <Box className="flex gap-3">
                                     <Button onClick={addExpenseDialogClose}>
                                         Cancel
                                     </Button>
-                                    <Button disabled={isFormInvalid} onClick={handleSubmit}>
+                                    <Button disabled={isFormInvalid && !isFileSelected} onClick={handleSubmit}>
                                         Submit
                                     </Button>
                                 </Box>

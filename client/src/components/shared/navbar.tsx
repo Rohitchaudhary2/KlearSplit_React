@@ -11,20 +11,19 @@ import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { logout } from '../../store/authSlice';
 import { API_URLS } from '../../constants/apiUrls';
 import axiosInstance from '../../utils/axiosInterceptor';
 
-const pages = ["Dashboard", 'Friends', 'Groups'];
+const pages = ["dashboard", 'friends', 'groups'];
 
 function ResponsiveAppBar() {
   const [anchorElNav, setAnchorElNav] = React.useState<null | HTMLElement>(null);
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
-  const [active, setActive] = React.useState("Dashboard");
   const dispatch = useDispatch();
-
+  const location = useLocation();
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
   };
@@ -127,11 +126,10 @@ function ResponsiveAppBar() {
           >
             KLEARSPLIT
           </Typography>
-          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, gap:1 }}>
             {pages.map((page) => (
               <Button
-              onClickCapture={() => setActive(page)}
-              variant={active === page ? 'outlined' : 'text'}
+              variant="text"
                 key={page}
                 component={Link}
                 to={'/' + page.toLowerCase()}
@@ -141,11 +139,16 @@ function ResponsiveAppBar() {
                   my: 2,
                   color: 'white',
                   display: 'block',
+                  fontWeight: location.pathname.startsWith('/' + page.toLowerCase()) ? '700' : '400',
                   borderColor: 'rgba(255, 255, 255, 0.7)', // white with opacity
                   '&:hover': {
                     borderColor: 'rgba(255, 255, 255, 1)', // stronger on hover
                     backgroundColor: 'rgba(255, 255, 255, 0.1)', // optional light background on hover
-                  }
+                  },
+                  ...(location.pathname.startsWith('/' + page.toLowerCase()) && {
+                    borderColor: 'rgba(255, 255, 255, 1)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  }),
                 }}
               >
                 {page}

@@ -5,12 +5,14 @@ import Button from '@mui/joy/Button';
 import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
+import { Friend } from "./index.model";
 
 const AddFriend: React.FC<{
     open: boolean,
+    handleAddFriendRequests: (requests: Friend[]) => void
     handleAddFriendClose: () => void
-}> = ({ open, handleAddFriendClose }) => {
-
+}> = ({ open, handleAddFriendRequests, handleAddFriendClose }) => {
+    const [addFriendLoader, setAddFriendLoader] = useState(false);
     const [loading, setLoading] = useState(false);
     const [inputTerm, setInputTerm] = useState('');
     const [isAddDisabled, setIsAddDisabled] = useState(true);
@@ -53,8 +55,14 @@ const AddFriend: React.FC<{
         setIsAddDisabled(false);
     }
     const handleAddFriend = async () => {
+        setAddFriendLoader(true);
         const res = await axiosInstance.post(`${API_URLS.addFriend}`, {email: inputTerm}, {withCredentials: true});
         if(res.data.success) {
+            const requests = await axiosInstance.get(`${API_URLS.getFriends}`, {
+                params: { status: "PENDING" },
+                withCredentials: true
+            });
+            handleAddFriendRequests(requests.data.data)
             handleAddFriendClose();
             toast.success("Request sent successfully")
         };

@@ -3,8 +3,9 @@ import { Paper } from "@mui/material";
 import React, { useState } from "react";
 import AddFriend from "../../friends/addFriend";
 import CreateGroup from "../../groups/createGroup";
+import { Friend } from "../../groups/index.model";
 
-const SearchBar: React.FC<{ placeholder: string; }> = ({ placeholder }) => {
+const SearchBar: React.FC<{ placeholder: string; handleAddFriendRequests?: (requests: Friend[]) => void }> = ({ placeholder, handleAddFriendRequests }) => {
   const [addFriendOpen, setAddFriendOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
 
@@ -13,7 +14,10 @@ const SearchBar: React.FC<{ placeholder: string; }> = ({ placeholder }) => {
 
     return (
         <>
-        <AddFriend open={addFriendOpen} handleAddFriendClose={handleAddFriendClose}/>
+        {
+            addFriendOpen &&
+            <AddFriend handleAddFriendRequests={handleAddFriendRequests!} open={addFriendOpen} handleAddFriendClose={handleAddFriendClose}/>
+        }
         <CreateGroup open={createGroupOpen} handleClose={handleCreateGroupClose}/>
             <div className="flex justify-between items-center gap-3">
                 <Paper elevation={5}>

@@ -781,7 +781,7 @@ class FriendService {
         expenses.forEach((expense) => {
           let balanceAmount = parseFloat(friend.balance_amount);
 
-          balanceAmount += expenses.payer_id === friend.participant1_id ? parseFloat(expense.debtor_amount) : -parseFloat(expense.debtor_amount);
+          balanceAmount += (expense.payer_id === friend.friend1_id) ? parseFloat(expense.debtor_amount) : -parseFloat(expense.debtor_amount);
 
           Object.assign(friend, { "balance_amount": balanceAmount });
         });

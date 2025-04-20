@@ -1,6 +1,6 @@
 import { Avatar, Box, Button, ButtonGroup, Divider, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, Paper, Stack, Typography } from "@mui/material"
 import SearchBar from "../shared/search-bar"
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Header from "./header";
 import MessageInput from "./input";
 import MessageItem from "./message";
@@ -19,7 +19,7 @@ import { format } from "date-fns";
 import classes from './index.module.css'
 
 const Friendspage = () => {
-  const [activeButton, setActiveButton] = useState("friends");
+  const [activeButton, setActiveButton] = useState<"friends" | "friendRequests">("friends");
   const messageContainer = useRef<HTMLDivElement | null>(null);
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [friendRequests, setFriendRequests] = useState<Friend[]>([]);
@@ -36,7 +36,9 @@ const Friendspage = () => {
   const [scrollHeight, setScrollHeight] = useState(0);
   const user = useSelector((store: RootState) => store.auth.user)
   const [loaders, setLoaders] = useState({
-    addExpense: false
+    addExpense: false,
+    friendRequests: false,
+    friends: false
   })
 
   const [timestampMessages, setTimestampMessages] = useState<string>(
@@ -89,25 +91,34 @@ const Friendspage = () => {
   // }, [messages.length, expenses.length, combined.length])
   useEffect(() => {
     const getFriendRequests = async () => {
-      const res = await axiosInstance.get(`${API_URLS.getFriends}`, {
-        params: {
-          status: "PENDING"
-        },
-        withCredentials: true
-      });
-      if (res.data.success) {
+      setLoaders((prev) => ({ ...prev, friendRequests: true }))
+      try {
+        const res = await axiosInstance.get(`${API_URLS.getFriends}`, {
+          params: { status: "PENDING" },
+          withCredentials: true
+        });
         setFriendRequests(res.data.data);
+
+      } catch (error) {
+        toast.error("Something went wrong, please try again later!");
+      } finally {
+        setLoaders((prev) => ({ ...prev, friendRequests: false }));
       }
     }
     const friends = async () => {
-      const res = await axiosInstance.get(`${API_URLS.getFriends}`, {
-        params: {
-          status: "ACCEPTED"
-        },
-        withCredentials: true
-      });
-      if (res.data.success) {
+      setLoaders((prev) => ({ ...prev, friends: true }));
+      try {
+        const res = await axiosInstance.get(API_URLS.getFriends, {
+          params: { status: "ACCEPTED" },
+          withCredentials: true
+        });
+
         setFriends(res.data.data);
+
+      } catch (error) {
+        toast.error("Something went wrong, please try again later!");
+      } finally {
+        setLoaders((prev) => ({ ...prev, friends: false }));
       }
     }
     getFriendRequests();
@@ -248,7 +259,7 @@ const Friendspage = () => {
     };
   }, [selectedFriend, allMessagesLoaded, allExpensesLoaded, allCombinedLoaded, view, timestampMessages, timestampExpenses, timestampCombined, loading]);
 
-  const handleActiveButtonChange = (view: string) => setActiveButton(view);
+  const handleActiveButtonChange = (view: "friends" | "friendRequests") => setActiveButton(view);
   const onSend = async (message: string) => {
     const messageData = {
       conversation_id: selectedFriend?.conversation_id,
@@ -289,17 +300,27 @@ const Friendspage = () => {
     setCombined([]);
     joinRoom(friend.conversation_id);
   }
+  const handleBulkAddExpenses = (expenses: Expense[]) => {
+    let balanceAmount = parseFloat(selectedFriend!.balance_amount);
+    expenses.forEach((expense) => {
+      expense.payer = expense.payer_id === user?.user_id ? "You" : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}`
+      balanceAmount += (user?.user_id === expense.payer_id ? parseFloat(expense.debtor_amount) : -parseFloat(expense.debtor_amount))
+    })
+    setCombined((prev) => [...prev, ...expenses]);
+    setExpenses((prev) => [...prev, ...expenses]);
+    selectedFriend!.balance_amount = JSON.stringify(balanceAmount);
+  }
   const addExpense = async (expenseInfo: FormData) => {
-    setLoaders((prev) => ({...prev, addExpense: true}));
+    setLoaders((prev) => ({ ...prev, addExpense: true }));
     const res = await axiosInstance.post(`${API_URLS.addExpense}/${selectedFriend?.conversation_id}`, expenseInfo, { withCredentials: true });
     if (res.data.success) {
-      const expense = {...res.data.data, "payer": res.data.data.payer_id === user?.user_id ? "You" : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}`}
+      const expense = { ...res.data.data, "payer": res.data.data.payer_id === user?.user_id ? "You" : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}` }
       setCombined((prev) => [...prev, expense]);
       setExpenses((prev) => [...prev, expense]);
       selectedFriend!.balance_amount = JSON.stringify(parseFloat(selectedFriend!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
       toast.success("Expense Added successfully")
     }
-    setLoaders((prev) => ({...prev, addExpense: false}))
+    setLoaders((prev) => ({ ...prev, addExpense: false }))
   }
   const handleSettlement = async (settlementAmount: number) => {
     const res = await axiosInstance.post(
@@ -308,22 +329,25 @@ const Friendspage = () => {
       { withCredentials: true }
     )
     if (res.data.success) {
-      const settlement = {...res.data.data, "payer": res.data.data.payer_id === user?.user_id ? "You" : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}`}
+      const settlement = { ...res.data.data, "payer": res.data.data.payer_id === user?.user_id ? "You" : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}` }
       setCombined((prev) => [...prev, settlement]);
       setExpenses((prev) => [...prev, settlement]);
       selectedFriend!.balance_amount = JSON.stringify(parseFloat(selectedFriend!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
       toast.success("Settlement added successfully")
     }
   }
+  const handleAddFriendRequests = (requests: Friend[]) => {
+    setFriendRequests(requests)
+  }
   return (
     <>
       {
-        selectedFriend && <AddExpense friend={selectedFriend!.friend} open={addExpenseDialogOpen} handleAddExpense={addExpense} handleAddExpensesClose={handleAddExpensesClose} />
+        selectedFriend && user && <AddExpense handleBulkAddExpenses={handleBulkAddExpenses} friend={selectedFriend!.friend} open={addExpenseDialogOpen} handleAddExpense={addExpense} handleAddExpensesClose={handleAddExpensesClose} />
       }
       <Box className="grid gap-4 grid-cols-4 h-[89.5vh]">
         <Box className="p-4 pe-0 flex flex-col flex-wrap h-full col-span-4 md:col-span-1" hidden={false} sx={{ backgroundColor: "#A1E3F9" }}>
           <Box className="pb-4">
-            <SearchBar placeholder="Search using email..." />
+            <SearchBar handleAddFriendRequests={handleAddFriendRequests} placeholder="Search using email..." />
           </Box>
           <Box className="grow flex flex-col rounded-lg shadow-md m-0 p-0 max-w-full" sx={{ backgroundColor: "white" }}>
             <Paper className="rounded-lg" elevation={5}>
@@ -331,7 +355,7 @@ const Friendspage = () => {
                 <Button onClick={() => handleActiveButtonChange("friends")} variant={activeButton === "friends" ? "contained" : "outlined"} className="w-1/2"
                   sx={{ borderRadius: "4px 0px 0px 0px" }}
                 >Friends</Button>
-                < Button onClick={() => handleActiveButtonChange("requests")} variant={activeButton === "requests" ? "contained" : "outlined"} className="w-1/2"
+                < Button onClick={() => handleActiveButtonChange("friendRequests")} variant={activeButton === "friendRequests" ? "contained" : "outlined"} className="w-1/2"
                   sx={{ borderRadius: "0px 4px 0px 0px" }}
                 >
                   <Badge badgeContent={friendRequests.length} size="sm" badgeInset="-22%">
@@ -342,21 +366,28 @@ const Friendspage = () => {
               <List dense className="max-h-[70.2vh] min-h-[70.2vh] overflow-y-auto overflow-x-auto " sx={{ width: '100%', padding: 0, bgcolor: 'background.paper', borderRadius: "0px 0px 8px 8px" }}>
                 <Divider />
                 {
+                  loaders[activeButton] && "Loading..."
+                }
+                {
+                  !loaders[activeButton] && !(activeButton === "friends" ? friends : friendRequests).length && "No Data found!"
+                }
+                {
                   (activeButton === "friends" ? friends : friendRequests).map((friend) => {
                     return (
-                      <>
+                      < Fragment key={friend.conversation_id}>
+
                         <ListItem disablePadding alignItems="flex-start" key={friend.conversation_id} onClick={() => {
                           handleSelectFriend(friend);
                         }}>
                           <ListItemButton sx={{ paddingX: 1 }}>
                             <ListItemAvatar sx={{ minWidth: 32, paddingRight: 1 }}>
-                              <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 32, height: 32 }} />
+                              <Avatar alt="avatar" src={friend.friend.image_url ?? `assets/image.png`} sx={{ width: 40, height: 40 }} />
                             </ListItemAvatar>
                             <ListItemText
                               primary={
                                 <Box className="flex justify-between">
                                   <Box>{friend.friend.first_name} {friend.friend.last_name}</Box>
-                                  <Box className="flex gap-2">{friend.balance_amount} {(activeButton === "requests" && friend.status === "RECEIVER") ? <>
+                                  <Box className="flex gap-2" sx={{ color: parseFloat(friend.balance_amount) < 0 ? 'red' : 'green' }}>₹{friend.balance_amount} {(activeButton === "friendRequests" && friend.status === "RECEIVER") ? <>
                                     <button onClick={() => handleAcceptRejectRequest(friend.conversation_id, "ACCEPTED")}><Check /></button>
                                     <button onClick={() => handleAcceptRejectRequest(friend.conversation_id, "REJECTED")}><Clear /></button>
                                   </> : null}</Box>
@@ -375,7 +406,7 @@ const Friendspage = () => {
                           </ListItemButton>
                         </ListItem>
                         <Divider />
-                      </>
+                      </Fragment>
                     )
                   })
                 }
@@ -387,7 +418,7 @@ const Friendspage = () => {
           <Paper className="h-full" elevation={5}>
             <Stack className="flex flex-col h-full bg-[white] rounded-lg">
               {
-                selectedFriend ?
+                selectedFriend && user ?
                   <>
                     <Box><Header handleSettlement={handleSettlement} friend={selectedFriend} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
                     <Divider />

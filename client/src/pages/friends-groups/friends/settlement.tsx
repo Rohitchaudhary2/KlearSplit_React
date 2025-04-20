@@ -16,39 +16,39 @@ const Settlement: React.FC<{
     const user = useSelector((store: RootState) => store.auth.user)
     const totalAmount = Math.abs(
         parseFloat(selectedFriend.balance_amount),
-      );
+    );
     const [settlementAmount, setSettlementAmount] = useState(totalAmount);
     const isUserPayer = parseFloat(selectedFriend.balance_amount) < 0;
     const getFullNameAndImage = (user: User | Friend["friend"]) => {
         return {
-          fullName: `${user?.first_name} ${user?.last_name ?? ""}`.trim(),
-          imageUrl: user?.image_url,
+            fullName: `${user?.first_name} ${user?.last_name ?? ""}`.trim(),
+            imageUrl: user?.image_url,
         };
-      }
+    }
     let payerName, payerImage, debtorName, debtorImage, payerId, debtorId;
 
-    switch(isUserPayer) {
-      case true: {
-        const { fullName: payer, imageUrl: payerImg } = getFullNameAndImage(user!);
-        const { fullName: debtor, imageUrl: debtorImg } = getFullNameAndImage(selectedFriend.friend);
-        payerName = payer;
-        debtorName = debtor;
-        payerImage = payerImg;
-        debtorImage = debtorImg;
-        payerId = user!.user_id;
-        debtorId = selectedFriend.friend.user_id;
-        break;
-      }
-      case false: {
-        const { fullName: payer, imageUrl: payerImg } = getFullNameAndImage(selectedFriend.friend);
-        const { fullName: debtor, imageUrl: debtorImg } = getFullNameAndImage(user!);
-        payerName = payer;
-        debtorName = debtor;
-        payerImage = payerImg;
-        debtorImage = debtorImg;
-        debtorId = user!.user_id;
-        payerId = selectedFriend.friend.user_id;
-      }
+    switch (isUserPayer) {
+        case true: {
+            const { fullName: payer, imageUrl: payerImg } = getFullNameAndImage(user!);
+            const { fullName: debtor, imageUrl: debtorImg } = getFullNameAndImage(selectedFriend.friend);
+            payerName = payer;
+            debtorName = debtor;
+            payerImage = payerImg;
+            debtorImage = debtorImg;
+            payerId = user!.user_id;
+            debtorId = selectedFriend.friend.user_id;
+            break;
+        }
+        case false: {
+            const { fullName: payer, imageUrl: payerImg } = getFullNameAndImage(selectedFriend.friend);
+            const { fullName: debtor, imageUrl: debtorImg } = getFullNameAndImage(user!);
+            payerName = payer;
+            debtorName = debtor;
+            payerImage = payerImg;
+            debtorImage = debtorImg;
+            debtorId = user!.user_id;
+            payerId = selectedFriend.friend.user_id;
+        }
     }
     const onChange = (value: string) => setSettlementAmount(parseFloat(value));
     const handleSubmit = () => {
@@ -74,16 +74,18 @@ const Settlement: React.FC<{
             >
                 <DialogTitle className="bg-[#3674B5] text-center text-white" sx={{ borderRadius: "7px 7px 0px 0px" }}>Settle up</DialogTitle>
                 <Box className="w-full self-start rounded p-3 flex flex-col gap-3">
-                    <Box className="flex justify-between gap-3 px-6 items-center">
-                        <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 60, height: 60 }} />
+                    <Box className="flex justify-between gap-3 px-2 items-center">
+                        <Box className="flex flex-col justify-center items-center gap-2 w-[10vw]">
+                            <Avatar alt="avatar" src={payerImage ?? "assets/image.png"} sx={{ width: 60, height: 60 }} />
+                            <Typography>{payerName}</Typography>
+                        </Box>
                         <span className={classes.arrow}></span>
-                        <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 60, height: 60 }} />
+                        <Box className="flex flex-col justify-center items-center gap-2 w-[10vw]">
+                            <Avatar alt="avatar" src={debtorImage ?? "assets/image.png"} sx={{ width: 60, height: 60 }} />
+                            <Typography>{debtorName}</Typography>
+                        </Box>
                     </Box>
-                    <Box className="flex justify-between gap-3 items-center">
-                        <Typography className="grow">{payerName}</Typography>
-                        <Typography>paid</Typography>
-                        <Typography className="grow text-end">{debtorName}</Typography>
-                    </Box>
+
                     <TextField
                         label="Total Amount"
                         required
@@ -97,7 +99,7 @@ const Settlement: React.FC<{
                     />
                     <Box className="flex flex-col gap-3">
                         <Button variant="outlined" onClick={handleSubmit}>Record as cash Payment</Button>
-                        <Button variant="outlined">Pay using Paypal</Button>
+                        <Button variant="outlined" disabled={payerId !== user?.user_id}>Pay using Paypal</Button>
                     </Box>
                     <Box className="flex justify-end items-center p-3">
                         <Button onClick={handleSettlementClose}>
