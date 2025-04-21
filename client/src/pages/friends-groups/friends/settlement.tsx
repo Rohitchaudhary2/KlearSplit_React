@@ -1,6 +1,6 @@
 import { ModalDialog } from "@mui/joy"
 import { Modal, DialogTitle, Box, Typography, Avatar, TextField } from "@mui/material"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Button from '@mui/joy/Button';
 import classes from './index.module.css';
 import { RootState } from "../../../store";
@@ -20,6 +20,7 @@ const Settlement: React.FC<{
     const totalAmount = Math.abs(
         parseFloat(selectedFriend.balance_amount),
     );
+    const [loader, setLoader] = useState(false);
     const [settlementAmount, setSettlementAmount] = useState(totalAmount);
     const isUserPayer = parseFloat(selectedFriend.balance_amount) < 0;
     const getFullNameAndImage = (user: User | Friend["friend"]) => {
@@ -29,6 +30,10 @@ const Settlement: React.FC<{
         };
     }
     let payerName, payerImage, debtorName, debtorImage, payerId, debtorId;
+    const [error, setError] = useState("");
+    useEffect(() => {
+        setSettlementAmount(totalAmount)
+    }, [totalAmount])
 
     switch (isUserPayer) {
         case true: {
@@ -56,12 +61,16 @@ const Settlement: React.FC<{
     const onChange = (value: string) => {
         if (isNaN(parseFloat(value))) value = "0"
         setSettlementAmount(parseFloat(value) ?? 0)
+        if(parseFloat(value) < 0.1 || parseFloat(value) > totalAmount) {
+            setError(`Amount must be between 0.1 and ${totalAmount}.`)
+        } else setError("")
     };
     const handleSubmit = () => {
         handleSettlement(settlementAmount);
         handleSettlementClose()
     }
     const payWithPayPal = async () => {
+        setLoader(true);
         try {
             const res = await axiosInstance.post(`${API_URLS.createPayment}`, {
                 amount: settlementAmount,
@@ -73,6 +82,7 @@ const Settlement: React.FC<{
 
             window.location.href = res.data.data;
         } catch (error) {
+            setLoader(false);
             toast.error("Failed to initiate payment, please try again later");
         }
     }
@@ -84,7 +94,6 @@ const Settlement: React.FC<{
                     backgroundColor: "white",
                     position: "fixed",
                     top: "10",
-                    // minHeight: "50%",
                     minWidth: "30%",
                     padding: 0,
                     border: "none",
@@ -115,12 +124,12 @@ const Settlement: React.FC<{
                         value={settlementAmount}
                         onChange={(e) => onChange(e.target.value.trim() ?? "0")}
                         fullWidth
-                    // error={!!errors.total_amount}
-                    // helperText={errors.total_amount}
+                        error={!!error}
+                        helperText={error}
                     />
                     <Box className="flex flex-col gap-3">
-                        <Button variant="outlined" onClick={handleSubmit}>Record as cash Payment</Button>
-                        <Button variant="outlined" onClick={payWithPayPal} disabled={payerId !== user?.user_id}>Pay using Paypal</Button>
+                        <Button variant="outlined" disabled={!!error || loader} onClick={handleSubmit}>Record as cash Payment</Button>
+                        <Button variant="outlined" onClick={payWithPayPal} disabled={payerId !== user?.user_id || !!error || loader}>Pay using Paypal</Button>
                     </Box>
                     <Box className="flex justify-end items-center p-3">
                         <Button onClick={handleSettlementClose}>

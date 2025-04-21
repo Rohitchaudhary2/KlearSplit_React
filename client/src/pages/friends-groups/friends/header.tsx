@@ -3,12 +3,12 @@ import { Avatar, Box, FormControl, IconButton, ListItemAvatar, Menu, MenuItem, S
 import { useState } from "react";
 import ViewExpenses from "./viewExpenses";
 import Settlement from "./settlement";
-import { Friend } from "./index.model";
+import { Expense, Friend } from "./index.model";
 import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
 
-const Header: React.FC<{ friend: Friend, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, handleSettlement: (settlementAmount: number) => void, view: string }> = ({ friend, handleViewChange, handleSettlement, view }) => {
+const Header: React.FC<{ friend: Friend, handleUpdateExpense: (expense: Expense) => void, handleDeleteExpense: (expense: Expense) => void, handleSelectFriend: (friend: Friend | undefined) => void, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, handleSettlement: (settlementAmount: number) => void, view: string }> = ({ friend, handleUpdateExpense, handleDeleteExpense, handleSelectFriend, handleViewChange, handleSettlement, view }) => {
   const isBlock = friend.block_status === "BOTH" || (friend.block_status === "FRIEND1" && friend.status === "SENDER") || (friend.block_status === "FRIEND2" && friend.status === "RECEIVER")
   const [blockStatus, setBlockStatus] = useState(isBlock ? "Unblock" : "Block");
   const isArchived = friend.archival_status === "BOTH" || (friend.archival_status === "FRIEND1" && friend.status === "SENDER") || (friend.archival_status === "FRIEND2" && friend.status === "RECEIVER")
@@ -72,11 +72,11 @@ const Header: React.FC<{ friend: Friend, handleViewChange: (view: "All" | "Messa
     <>
       <Settlement handleSettlement={addSettlement} selectedFriend={friend} open={settlementOpen} handleSettlementClose={handleSettlementClose} />
       <Box className="flex justify-between p-2 content-center">
-        <ViewExpenses friend={friend} open={viewExpensesOpen} handleViewExpensesClose={handleViewExpensesClose} />
+        <ViewExpenses handleUpdateExpense={handleUpdateExpense} handleDeleteExpense={handleDeleteExpense} friend={friend} open={viewExpensesOpen} handleViewExpensesClose={handleViewExpensesClose} />
         <Box className="flex justify-between gap-2 items-center">
-          <ArrowBack />
+          <ArrowBack className="cursor-pointer" onClick={() => handleSelectFriend(undefined)} />
           <ListItemAvatar sx={{ minWidth: 32 }}>
-            <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 32, height: 32 }} />
+            <Avatar alt="Avatar" src={friend.friend.image_url ?? `assets/image.png`} sx={{ width: 40, height: 40 }} />
           </ListItemAvatar>
           <Typography variant="h6" textAlign="center">{friend.friend.first_name} {friend.friend.last_name}</Typography>
         </Box>

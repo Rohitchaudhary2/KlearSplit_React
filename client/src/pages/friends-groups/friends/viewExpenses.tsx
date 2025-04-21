@@ -13,9 +13,11 @@ import { toast } from "sonner";
 
 const ViewExpenses: React.FC<{
     open: boolean,
+    handleUpdateExpense: (expense: Expense) => void,
+    handleDeleteExpense: (expense: Expense) => void,
     friend: Friend
     handleViewExpensesClose: () => void
-}> = ({ open, friend,
+}> = ({ open, friend, handleUpdateExpense, handleDeleteExpense,
     handleViewExpensesClose
 }) => {
         const [loading, setLoading] = useState(false);
@@ -47,7 +49,7 @@ const ViewExpenses: React.FC<{
                 }
             }
             fetchExpenses()
-        }, [])
+        }, [open])
         const downloadExpenses = () => {
             const doc = new jsPDF();
 
@@ -90,28 +92,41 @@ const ViewExpenses: React.FC<{
         }
         const handleAddExpense = async (expenseInfo: FormData) => {
             try {
-                await axiosInstance.patch(
+                const res = await axiosInstance.patch(
                     `${API_URLS.updateExpense}/${friend.conversation_id}`,
                     expenseInfo,
                     { withCredentials: true }
                 );
 
+                const updatedExpenses = expenses.map((expense) => {
+                    if(expense.friend_expense_id === res.data.data.friend_expense_id) {
+                        return res.data.data;
+                    }
+                    return expense;
+                })
+                setExpenses(updatedExpenses);
+
+                handleUpdateExpense(res.data.data);
                 toast.success("Expense updated successfully!");
             } catch (error) {
                 toast.error("Failed to update expense, please try again later");
             }
             handleAddExpensesClose();
         }
-        const handleDeleteExpense = async (expense: Expense) => {
+        const onDeleteExpense = async (expenseData: Expense) => {
             try {
                 await axiosInstance.delete(
                     `${API_URLS.deleteExpense}/${friend.conversation_id}`,
                     {
-                        data: { friend_expense_id: expense.friend_expense_id },
+                        data: { friend_expense_id: expenseData.friend_expense_id },
                         withCredentials: true,
                     }
                 );
 
+                const updatedExpenses = expenses.filter((expense) => expense.friend_expense_id !== expenseData.friend_expense_id)
+                setExpenses(updatedExpenses);
+
+                handleDeleteExpense(expenseData);
                 toast.success("Expense deleted successfully!");
             } catch (error) {
                 toast.error("Failed to delete expense, please try again later");
@@ -206,9 +221,10 @@ const ViewExpenses: React.FC<{
                                                         <td className="px-2 py-1 flex justify-center items-center space-x-2">
                                                             {/* Update Icon */}
                                                             <button
+                                                                disabled={expense.split_type === "SETTLEMENT"}
                                                                 onClick={() => onUpdateExpense(expense)}
                                                                 onKeyUp={(e) => e.key === 'Enter' && onUpdateExpense(expense)}
-                                                                className="hover:text-blue-500 cursor-pointer"
+                                                                className={"hover:text-blue-500 cursor-pointer disabled:text-gray-400 disabled:cursor-not-allowed"}
                                                                 aria-label="Update"
                                                             >
                                                                 {/* {isUpdateLoading(expense) ? (
@@ -221,9 +237,10 @@ const ViewExpenses: React.FC<{
 
                                                             {/* Delete Icon */}
                                                             <button
-                                                                onClick={() => handleDeleteExpense(expense)}
-                                                                onKeyUp={(e) => e.key === 'Enter' && handleDeleteExpense(expense)}
-                                                                className="hover:text-red-500 cursor-pointer"
+                                                                disabled={expense.split_type === "SETTLEMENT"}
+                                                                onClick={() => onDeleteExpense(expense)}
+                                                                onKeyUp={(e) => e.key === 'Enter' && onDeleteExpense(expense)}
+                                                                className={"hover:text-blue-500 cursor-pointer disabled:text-gray-400 disabled:cursor-not-allowed"}
                                                                 aria-label="Delete"
                                                             >
                                                                 {/* {isDeleteLoading(expense) ? (

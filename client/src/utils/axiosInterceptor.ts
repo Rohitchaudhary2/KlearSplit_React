@@ -18,7 +18,10 @@ axiosInstance.interceptors.response.use(
     if (response?.status === 401 && response.data.message === "Token expired") {
         try {
             // Refresh the access token
-            const user = await axiosInstance.get(API_URLS.refreshAccessToken, { withCredentials: true });
+            await axiosInstance.get(API_URLS.refreshAccessToken, { withCredentials: true });
+            const user = await axiosInstance.get(`${API_URLS.fetchUser}`, {withCredentials: true});
+            console.log(user);
+            
             store.dispatch(login(user.data.data));
     
             // Retry the original request

@@ -52,7 +52,6 @@ const Friendspage = () => {
   );
 
   const navigate = useNavigate()
-  const currentUser = useSelector((store: RootState) => store.auth.user)
   const [selectedFriend, setSelectedFriend] = useState<Friend>();
   const {
     joinRoom,
@@ -211,16 +210,6 @@ const Friendspage = () => {
           case "All": {
             if (!allCombinedLoaded && combined.length) {
               setLoading(() => true)
-              // const res = await axiosInstance.get(`${API_URLS.getCombined}/${selectedFriend?.conversation_id}`, {
-              //   params: { pageSize, timestamp: timestampCombined },
-              //   withCredentials: true
-              // });
-              // const combined = sortBycreatedAt(res.data.data);
-              // if (combined.length < 20) setAllCombinedLoaded(true);
-              // if (combined.length) setTimestampCombined(combined[0].createdAt);
-              // setCombined((prev) => [...combined, ...prev]);
-              // setScrollHeight(scrollHeight);
-              // setLoading(() => false)
               try {
                 const res = await axiosInstance.get(`${API_URLS.getCombined}/${selectedFriend?.conversation_id}`, {
                   params: { pageSize, timestamp: timestampCombined },
@@ -313,7 +302,7 @@ const Friendspage = () => {
   const onSend = async (message: string) => {
     const messageData = {
       conversation_id: selectedFriend?.conversation_id,
-      sender_id: currentUser?.user_id,
+      sender_id: user?.user_id,
       message,
     };
     sendConversationMessage(messageData);
@@ -333,7 +322,7 @@ const Friendspage = () => {
     setView(view);
     setScrollHeight(0);
   }
-  const handleSelectFriend = (friend: Friend) => {
+  const handleSelectFriend = (friend: Friend | undefined) => {
     if (friend === selectedFriend) return;
     if (selectedFriend) {
       leaveRoom(selectedFriend.conversation_id);
@@ -348,7 +337,7 @@ const Friendspage = () => {
     setMessages([]);
     setExpenses([]);
     setCombined([]);
-    joinRoom(friend.conversation_id);
+    if (friend) joinRoom(friend.conversation_id);
   }
   const handleBulkAddExpenses = (expenses: Expense[]) => {
     let balanceAmount = parseFloat(selectedFriend!.balance_amount);
@@ -429,6 +418,45 @@ const Friendspage = () => {
   }
   const handleAddFriendRequests = (requests: Friend[]) => {
     setFriendRequests(requests)
+  }
+  const handleUpdateExpense = (expenseData: Expense) => {
+    const balanceAmount = parseFloat(selectedFriend!.balance_amount) + (
+      expenseData.payer_id === user?.user_id ?
+      parseFloat(expenseData.debtor_amount) : 
+      -parseFloat(expenseData.debtor_amount)
+    )
+    selectedFriend!.balance_amount = JSON.stringify(balanceAmount);
+    const updatedExpenses = expenses.map((expense) => {
+      if (expense.friend_expense_id === expenseData.friend_expense_id) {
+        return expenseData;
+      }
+      return expense;
+    })
+    setExpenses(updatedExpenses);
+    const updatedCombined = combined.map((item) => {
+      if ("friend_expense_id" in item && item.friend_expense_id === expenseData.friend_expense_id) {
+        return expenseData;
+      }
+      return item;
+    })
+    setCombined(updatedCombined);
+  }
+  const handleDeleteExpense = (expenseData: Expense) => {
+    const balanceAmount = parseFloat(selectedFriend!.balance_amount) + (
+      expenseData.payer_id === user?.user_id ?
+      -parseFloat(expenseData.debtor_amount) : 
+      parseFloat(expenseData.debtor_amount)
+    )
+    selectedFriend!.balance_amount = JSON.stringify(balanceAmount);
+    const updatedExpenses = expenses.filter((expense) => expense.friend_expense_id !== expenseData.friend_expense_id)
+    setExpenses(updatedExpenses);
+    const updatedCombined = combined.filter((item) => {
+      if ("friend_expense_id" in item && item.friend_expense_id === expenseData.friend_expense_id) {
+        return false;
+      }
+      return true;
+    })
+    setCombined(updatedCombined); 
   }
   return (
     <>
@@ -511,7 +539,7 @@ const Friendspage = () => {
               {
                 selectedFriend && user ?
                   <>
-                    <Box><Header handleSettlement={handleSettlement} friend={selectedFriend} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
+                    <Box><Header handleUpdateExpense={handleUpdateExpense} handleDeleteExpense={handleDeleteExpense} handleSelectFriend={handleSelectFriend} handleSettlement={handleSettlement} friend={selectedFriend} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
                     <Divider />
                     <Box ref={messageContainer} className="h-[67vh] overflow-auto">
                       {loading && (
@@ -524,7 +552,7 @@ const Friendspage = () => {
                           messages.map((message) => (
                             <MessageItem
                               message={{ text: message.message, createdAt: format(new Date(message.createdAt), "hh:mm a") }}
-                              isCurrentUser={message.sender_id === currentUser?.user_id}
+                              isCurrentUser={message.sender_id === user?.user_id}
                               name={selectedFriend.friend.first_name}
                               imageUrl="/vite.svg"
                               currentUserImageUrl="/vite.svg"
@@ -566,7 +594,7 @@ const Friendspage = () => {
                               return (
                                 <MessageItem
                                   message={{ text: item.message, createdAt: format(new Date(item.createdAt), "hh:mm a") }}
-                                  isCurrentUser={item.sender_id === currentUser?.user_id}
+                                  isCurrentUser={item.sender_id === user?.user_id}
                                   name={selectedFriend.friend.first_name}
                                   imageUrl="/vite.svg"
                                   currentUserImageUrl="/vite.svg"
