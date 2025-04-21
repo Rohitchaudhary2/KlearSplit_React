@@ -340,10 +340,7 @@ const AddExpense: React.FC<{
                                 Upload Receipt
                                 <VisuallyHiddenInput type="file" />
                             </Button>
-                            <Box className="flex justify-between items-center">
-                                <Button >
-                                    Bulk Insertion of Expenses
-                                </Button>
+                            <Box className="flex justify-end items-center">
                                 <Box className="flex gap-3">
                                     <Button onClick={addExpenseDialogClose}>
                                         Cancel

@@ -62,36 +62,40 @@ const RegisterPage = () => {
 
         return errorMsg;
     };
-    
+
     const [isSignUpDisabled, setIsSignUpDisabled] = useState(true);
     const isValid = !Object.entries(signupInfo).every(([key, value]) => !validateField(key, value));
     useEffect(() => setIsSignUpDisabled(isValid), [isValid])
     const [dialogOpen, setDialogOpen] = useState(false);
 
-    const handleSubmit = async(e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        switch(stage) {
+        switch (stage) {
             case "signup":
-                const res = await axiosInstance.post(API_URLS.verify, signupInfo)
-                if(!res.data.success) {
-                    toast.error(res.data.message);
+                try {
+                    const res = await axiosInstance.post(API_URLS.verify, signupInfo);
+
+                    // Successful verification
+                    setStage("otp"); // Proceed to the next stage
+                    toast.success(res.data.message); // Show success message
+                } catch (error) {
+                    toast.error("An error occurred during verification. Please try again later.");
                 }
-                
-                setStage("otp");
-                toast.success(res.data.message);
                 break;
             case "otp": {
-                const res = await axiosInstance.post(API_URLS.register, { ...signupInfo, "otp": otp}, {withCredentials: true})
-                if(!res.data.success) {
-                    toast.error(res.data.message);
+                try {
+                    const res = await axiosInstance.post(API_URLS.register, { ...signupInfo, otp }, { withCredentials: true });
+
+                    // Successful registration
+                    dispatch(login(res.data.data)); // Store user data in the state
+                    navigate("/dashboard"); // Redirect to the dashboard
+                    toast.success(res.data.message); // Show success message
+                } catch (error) {
+                    toast.error("An error occurred during registration. Please try again later.");
                 }
-                dispatch(login(res.data.data))
-                navigate("/dashboard");
-                toast.success(res.data.message);
                 break;
             }
         }
-        
     }
 
     const onChange = (key: string, value: string) => {
@@ -119,19 +123,19 @@ const RegisterPage = () => {
 
     const handleDialogClose = (value: boolean) => {
         setDialogOpen(false);
-        if(value) setStage("signup")
+        if (value) setStage("signup")
     }
 
     const handleGoogleSignup = () => {
         const newWindow = window.open(API_URLS.googleAuth, "_self");
         if (newWindow) {
-        newWindow.opener = null; // Ensures no link between the parent and the new window
+            newWindow.opener = null; // Ensures no link between the parent and the new window
         }
     }
 
     return (
         <>
-            <CustomDialog open={dialogOpen} onClose={handleDialogClose} title="Confirmation" message={`Are you sure entered email "${signupInfo.email} wrong?"`}/>
+            <CustomDialog open={dialogOpen} onClose={handleDialogClose} title="Confirmation" message={`Are you sure entered email "${signupInfo.email} wrong?"`} />
             <div className="flex justify-center min-h-screen items-center w-full md:w-6/7 mx-auto grid grid-cols-10 p-10 rounded-sm">
                 <div className="md:col-span-5 col-span-10 h-full bg-[#D1F8EF] shadow-2xl rounded-lg md:rounded-l-lg md:rounded-r-none p-6 items-center content-center">
                     <Typography variant="h4" align="center" color="primary" className="pb-7" sx={{ fontWeight: 700 }}>KLEARSPLIT</Typography>
@@ -201,7 +205,7 @@ const RegisterPage = () => {
                                 }}
                             />
                             {
-                                stage === "otp" && 
+                                stage === "otp" &&
                                 <div className="mt-4 text-right">
                                     <p onClick={handleWrongEmail} className="text-blue-600 hover:underline hover:cursor-pointer">
                                         Wrong Email?
@@ -267,7 +271,7 @@ const RegisterPage = () => {
                                 startIcon={<Google />}
                                 sx={{ padding: 2 }}
                                 className="mt-4 text-white border-white"
-                            onClick={handleGoogleSignup}
+                                onClick={handleGoogleSignup}
                             >
                                 Sign in with Google
                             </Button>

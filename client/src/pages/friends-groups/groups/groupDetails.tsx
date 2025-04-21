@@ -27,22 +27,29 @@ const GroupDetails: React.FC<GroupDetailsProps> = ({ handleGroupDetailsClose, gr
     const [payer, setPayer] = useState<GroupMemberData>();
     const [debtor, setDebtor] = useState<GroupMemberData>();
     useEffect(() => {
-        if(payer) {
+        if (payer) {
             setSettlementOpen(true);
         }
-    },[payer])
+    }, [payer])
     const handleUpdateGroup = (updatedGroup: GroupData) => {
         setGroupData((prev) => ({ ...prev, ...updatedGroup }));
         setOpen(false);
     }
-    const handleSettlementSubmit = async(settlementAmount: number) => {
-        const res = await axiosInstance.post(`${API_URLS.addGroupSettlements}/${group.group_id}`, {
-            "payer_id": payer?.group_membership_id,
-            "debtor_id": debtor?.group_membership_id,
-            "settlement_amount": settlementAmount
-        })
-        console.log(res.data.data);
-        
+    const handleSettlementSubmit = async (settlementAmount: number) => {
+        try {
+            const res = await axiosInstance.post(
+                `${API_URLS.addGroupSettlements}/${group.group_id}`,
+                {
+                    payer_id: payer?.group_membership_id,
+                    debtor_id: debtor?.group_membership_id,
+                    settlement_amount: settlementAmount
+                }
+            );
+
+            console.log(res.data.data);
+        } catch (error) {
+            toast.error("Failed to add group settlement, please try again later");
+        }
         handleSettlementClose();
     }
     const handleSettlementClose = () => {
@@ -52,9 +59,9 @@ const GroupDetails: React.FC<GroupDetailsProps> = ({ handleGroupDetailsClose, gr
     }
     const handleSettlementOpen = (member: GroupMemberData) => {
         setSettlementAmount(Math.abs(parseFloat(member.balance_with_user)));
-        if(parseFloat(member.balance_with_user) == 0) {
+        if (parseFloat(member.balance_with_user) == 0) {
             toast.warning("You are all settled up!")
-        } else if(parseFloat(member.balance_with_user) < 0) {
+        } else if (parseFloat(member.balance_with_user) < 0) {
             setPayer(member);
             setDebtor(currentMember);
         } else {
@@ -128,7 +135,7 @@ const GroupDetails: React.FC<GroupDetailsProps> = ({ handleGroupDetailsClose, gr
                                         </td>
 
                                         {/* Total Amount */}
-                                        <td className="px-2 py-1" style={{ color: parseFloat(member.balance_with_user) < 0 ? 'red' : 'green' }}>
+                                        <td className="px-2 py-1" style={{ color: parseFloat(member.balance_with_user) > 0 ? 'red' : 'green' }}>
                                             {Math.abs(parseFloat(member.balance_with_user))}
                                         </td>
 

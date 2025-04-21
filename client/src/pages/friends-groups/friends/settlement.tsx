@@ -8,6 +8,7 @@ import { useSelector } from "react-redux";
 import { Friend } from "./index.model";
 import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
+import { toast } from "sonner";
 
 const Settlement: React.FC<{
     open: boolean,
@@ -53,24 +54,27 @@ const Settlement: React.FC<{
         }
     }
     const onChange = (value: string) => {
-        if(isNaN(parseFloat(value))) value = "0"
+        if (isNaN(parseFloat(value))) value = "0"
         setSettlementAmount(parseFloat(value) ?? 0)
     };
     const handleSubmit = () => {
         handleSettlement(settlementAmount);
         handleSettlementClose()
     }
-    const payWithPayPal = async() => {
-        const res = await axiosInstance.post(`${API_URLS.createPayment}`, {
-            amount: settlementAmount,
-            id: selectedFriend.conversation_id,
-            payerId,
-            debtorId,
-            type: "friends"
-        })
-        if(res.data.data) {
+    const payWithPayPal = async () => {
+        try {
+            const res = await axiosInstance.post(`${API_URLS.createPayment}`, {
+                amount: settlementAmount,
+                id: selectedFriend.conversation_id,
+                payerId,
+                debtorId,
+                type: "friends"
+            });
+
             window.location.href = res.data.data;
-          }
+        } catch (error) {
+            toast.error("Failed to initiate payment, please try again later");
+        }
     }
     return (
         <Modal open={open} onClose={() => handleSettlementClose()}>

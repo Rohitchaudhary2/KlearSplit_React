@@ -47,7 +47,7 @@ const AddFriend: React.FC<{
             } else {
                 setUsers([]); // Clear options when input is empty
             }
-        }, 500); 
+        }, 500);
         return () => clearTimeout(debounceTimeout);
     }, [inputTerm]);
     const selectedUser = (email: string) => {
@@ -56,17 +56,26 @@ const AddFriend: React.FC<{
     }
     const handleAddFriend = async () => {
         setAddFriendLoader(true);
-        const res = await axiosInstance.post(`${API_URLS.addFriend}`, {email: inputTerm}, {withCredentials: true});
-        if(res.data.success) {
+        try {
+            await axiosInstance.post(
+                `${API_URLS.addFriend}`,
+                { email: inputTerm },
+                { withCredentials: true }
+            );
+
             const requests = await axiosInstance.get(`${API_URLS.getFriends}`, {
                 params: { status: "PENDING" },
                 withCredentials: true
             });
-            handleAddFriendRequests(requests.data.data)
+
+            handleAddFriendRequests(requests.data.data);
             handleAddFriendClose();
-            toast.success("Request sent successfully")
-        };
-        
+            toast.success("Request sent successfully");
+        } catch (error) {
+            toast.error("Failed to send friend request, please try again later");
+        } finally {
+            setAddFriendLoader(false);
+        }
     }
     return (
         <Modal open={open} onClose={handleAddFriendClose}>
@@ -99,40 +108,40 @@ const AddFriend: React.FC<{
                     />
                     {
                         users.length ? <List dense className="max-h-[30vh] overflow-y-auto overflow-x-auto border border-[#ccc]" sx={{ width: '100%', padding: 0, bgcolor: 'background.paper', borderRadius: "4px 4px 4px 4px" }}>
-                        {
-                            users.map((user) => {
-                                return (
-                                    <>
-                                        <ListItem disablePadding alignItems="flex-start" key={user.user_id} onClick={() => selectedUser(user.email)}>
-                                            <ListItemButton sx={{ paddingX: 1 }}>
-                                                <ListItemAvatar sx={{ minWidth: 32, paddingRight: 1 }}>
-                                                    <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 32, height: 32 }} />
-                                                </ListItemAvatar>
-                                                <ListItemText
-                                                    primary={
-                                                        <Box className="flex justify-between">
-                                                            <Box>{user.first_name} {user.last_name}</Box>
-                                                        </Box>
-                                                    }
-                                                    secondary={
-                                                        <Typography
-                                                            component="span"
-                                                            variant="body2"
-                                                            sx={{ color: 'text.primary', display: 'inline' }}
-                                                        >
-                                                            {user.email}
-                                                        </Typography>
-                                                    }
-                                                />
-                                            </ListItemButton>
-                                        </ListItem>
-                                        <Divider />
-                                    </>
-                                )
-                            })
-                        }
+                            {
+                                users.map((user) => {
+                                    return (
+                                        <>
+                                            <ListItem disablePadding alignItems="flex-start" key={user.user_id} onClick={() => selectedUser(user.email)}>
+                                                <ListItemButton sx={{ paddingX: 1 }}>
+                                                    <ListItemAvatar sx={{ minWidth: 32, paddingRight: 1 }}>
+                                                        <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 32, height: 32 }} />
+                                                    </ListItemAvatar>
+                                                    <ListItemText
+                                                        primary={
+                                                            <Box className="flex justify-between">
+                                                                <Box>{user.first_name} {user.last_name}</Box>
+                                                            </Box>
+                                                        }
+                                                        secondary={
+                                                            <Typography
+                                                                component="span"
+                                                                variant="body2"
+                                                                sx={{ color: 'text.primary', display: 'inline' }}
+                                                            >
+                                                                {user.email}
+                                                            </Typography>
+                                                        }
+                                                    />
+                                                </ListItemButton>
+                                            </ListItem>
+                                            <Divider />
+                                        </>
+                                    )
+                                })
+                            }
 
-                    </List> : null
+                        </List> : null
                     }
                 </Box>
                 <Box className="flex justify-end items-center gap-3 p-3 items-center">

@@ -33,11 +33,18 @@ const ViewExpenses: React.FC<{
             setLoading(true);
             const fetchExpenses = async () => {
                 const params = { fetchAll: true, timestamp: new Date().toISOString() };
-                const res = await axiosInstance.get(`${API_URLS.getExpenses}/${friend.conversation_id}`, { params, withCredentials: true })
-                if (res.data.success) {
+                try {
+                    const res = await axiosInstance.get(
+                        `${API_URLS.getExpenses}/${friend.conversation_id}`,
+                        { params, withCredentials: true }
+                    );
+
                     setExpenses(res.data.data);
+                } catch (error) {
+                    toast.error("Failed to fetch expenses, please try again later");
+                } finally {
+                    setLoading(false);
                 }
-                setLoading(false);
             }
             fetchExpenses()
         }, [])
@@ -82,17 +89,32 @@ const ViewExpenses: React.FC<{
             setExpenseToBeUpdated(expense);
         }
         const handleAddExpense = async (expenseInfo: FormData) => {
-            const res = await axiosInstance.patch(`${API_URLS.updateExpense}/${friend.conversation_id}`, expenseInfo, { withCredentials: true });
-            if (res.data.success) toast.success("Expense Updated successfully!");
+            try {
+                await axiosInstance.patch(
+                    `${API_URLS.updateExpense}/${friend.conversation_id}`,
+                    expenseInfo,
+                    { withCredentials: true }
+                );
+
+                toast.success("Expense updated successfully!");
+            } catch (error) {
+                toast.error("Failed to update expense, please try again later");
+            }
             handleAddExpensesClose();
         }
         const handleDeleteExpense = async (expense: Expense) => {
-            const res = await axiosInstance.delete(`${API_URLS.deleteExpense}/${friend.conversation_id}`, {
-                data: { friend_expense_id: expense.friend_expense_id },
-                withCredentials: true,
-            })
-            if(res.data.success) {
-                toast.success("Expense deleted successfully!")
+            try {
+                await axiosInstance.delete(
+                    `${API_URLS.deleteExpense}/${friend.conversation_id}`,
+                    {
+                        data: { friend_expense_id: expense.friend_expense_id },
+                        withCredentials: true,
+                    }
+                );
+
+                toast.success("Expense deleted successfully!");
+            } catch (error) {
+                toast.error("Failed to delete expense, please try again later");
             }
         }
         const handleAddExpensesClose = () => {
@@ -103,6 +125,7 @@ const ViewExpenses: React.FC<{
                 {
                     updateExpenseOpen &&
                     <AddExpense
+                        id={friend.conversation_id}
                         open={updateExpenseOpen}
                         friend={friend.friend}
                         expense={expenseToBeUpdated!}

@@ -29,7 +29,7 @@ const LoginPage = () => {
                     errorMsg = "Invalid email format";
                 break;
             case "password":
-                if(!value) errorMsg = "Password is required";
+                if (!value) errorMsg = "Password is required";
                 break;
         }
         return errorMsg;
@@ -37,15 +37,18 @@ const LoginPage = () => {
     const [isLoginDisabled, setIsLoginDisabled] = useState(true);
     const isValid = !Object.entries(loginInfo).every(([key, value]) => !validateField(key, value));
     useEffect(() => setIsLoginDisabled(isValid), [isValid]);
-    const handleSubmit = async(e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const res = await axiosInstance.post(API_URLS.login, loginInfo, { withCredentials: true})
-        if(!res.data.success) {
-            toast.error(res.data.message);
+        try {
+            const res = await axiosInstance.post(API_URLS.login, loginInfo, { withCredentials: true });
+
+            // Successful login
+            dispatch(login(res.data.data));
+            navigate("/dashboard");
+            toast.success(res.data.message);
+        } catch (error) {
+            toast.error("An error occurred during login. Please try again later.");
         }
-        dispatch(login(res.data.data))
-        navigate("/dashboard");
-        toast.success(res.data.message);
     }
 
     const [showPassword, setShowPassword] = useState(false);
@@ -68,7 +71,7 @@ const LoginPage = () => {
     const handleGoogleSignin = () => {
         const newWindow = window.open(API_URLS.googleAuth, "_self");
         if (newWindow) {
-        newWindow.opener = null; // Ensures no link between the parent and the new window
+            newWindow.opener = null;
         }
     }
 
@@ -93,9 +96,9 @@ const LoginPage = () => {
                                 slotProps={{
                                     input: {
                                         startAdornment: (
-                                        <InputAdornment position="start">
-                                            <Person />
-                                        </InputAdornment>
+                                            <InputAdornment position="start">
+                                                <Person />
+                                            </InputAdornment>
                                         ),
                                     },
                                 }}

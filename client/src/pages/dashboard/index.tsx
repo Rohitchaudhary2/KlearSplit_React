@@ -439,7 +439,7 @@ const DashboardPage = () => {
                             ...{
                                 sx: {
                                     [`.${axisClasses.left} .${axisClasses.label}`]: {
-                                        transform: 'translate(-20px, 0)',
+                                        transform: 'translate(-24px, 0)',
                                     },
                                 },
                             }

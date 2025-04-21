@@ -28,13 +28,14 @@ const VisuallyHiddenInput = styled('input')`
 `;
 
 const AddExpense: React.FC<{
+    id: string,
     open: boolean,
     friend: User,
     expense?: Expense,
-    handleBulkAddExpenses: (expenses: Expense[]) => void
+    handleBulkAddExpenses?: (expenses: Expense[]) => void
     handleAddExpensesClose: () => void,
     handleAddExpense: (expenseInfo: FormData) => void
-}> = ({ open, friend, expense, handleBulkAddExpenses,handleAddExpensesClose, handleAddExpense }) => {
+}> = ({ id, open, friend, expense, handleBulkAddExpenses,handleAddExpensesClose, handleAddExpense }) => {
     const user = useSelector((store: RootState) => store.auth.user)
     const [expenseInfo, setExpenseInfo] = useState({
         expense_name: "",
@@ -151,10 +152,19 @@ const AddExpense: React.FC<{
             const formData = new FormData();
             formData.append("file", selectedFile!, selectedFile!.name);
             formData.append("tableName", "friends_expenses");
-            const res = await axiosInstance.post(`${API_URLS.bulkAddExpenses}/cb26317d-c3e5-4dfa-a18b-5a718d0409a6`, formData, {withCredentials: true})
-            toast.success("Expenses added successfully!")
-            handleBulkAddExpenses(res.data.data);
-            handleAddExpensesClose();
+            try {
+                const res = await axiosInstance.post(
+                  `${API_URLS.bulkAddExpenses}/${id}`,
+                  formData,
+                  { withCredentials: true }
+                );
+              
+                toast.success("Expenses added successfully!");
+                handleBulkAddExpenses!(res.data.data);
+                handleAddExpensesClose();
+              } catch (error) {
+                toast.error("Failed to add expenses, please try again later");
+              }              
             return;
         }
         expenseInfo.debtor_id = expenseInfo.payer_id === user?.user_id ? friend.user_id : user!.user_id;

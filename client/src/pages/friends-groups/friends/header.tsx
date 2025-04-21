@@ -8,7 +8,7 @@ import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
 
-const Header: React.FC<{friend: Friend, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, handleSettlement: (settlementAmount: number) => void,view: string}> = ({friend, handleViewChange, handleSettlement, view}) => {
+const Header: React.FC<{ friend: Friend, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, handleSettlement: (settlementAmount: number) => void, view: string }> = ({ friend, handleViewChange, handleSettlement, view }) => {
   const isBlock = friend.block_status === "BOTH" || (friend.block_status === "FRIEND1" && friend.status === "SENDER") || (friend.block_status === "FRIEND2" && friend.status === "RECEIVER")
   const [blockStatus, setBlockStatus] = useState(isBlock ? "Unblock" : "Block");
   const isArchived = friend.archival_status === "BOTH" || (friend.archival_status === "FRIEND1" && friend.status === "SENDER") || (friend.archival_status === "FRIEND2" && friend.status === "RECEIVER")
@@ -24,7 +24,7 @@ const Header: React.FC<{friend: Friend, handleViewChange: (view: "All" | "Messag
     setAnchorEl(null);
   };
   const settlement = () => {
-    if(parseFloat(friend.balance_amount)=== 0) {
+    if (parseFloat(friend.balance_amount) === 0) {
       toast.info("You are all settled up!");
       return;
     }
@@ -35,19 +35,34 @@ const Header: React.FC<{friend: Friend, handleViewChange: (view: "All" | "Messag
   const viewExpenses = () => {
     setViewExpensesOpen(true);
   }
-  const archive = async() => {
-    const res = await axiosInstance.patch(`${API_URLS.archiveBlockRequest}/${friend.conversation_id}`, { type: "archived"}, {withCredentials: true})
-    if (res.data.success) {
+  const archive = async () => {
+    try {
+      await axiosInstance.patch(
+        `${API_URLS.archiveBlockRequest}/${friend.conversation_id}`,
+        { type: "archived" },
+        { withCredentials: true }
+      );
+
       toast.success(`${archiveStatus}d successfully`);
       setArchiveStatus(() => archiveStatus === "Archive" ? "Unarchive" : "Archive");
+    } catch (error) {
+      toast.error(`Failed to ${archiveStatus.toLowerCase()}, please try again later`);
     }
   }
-  const block = async() => {
-    const res = await axiosInstance.patch(`${API_URLS.archiveBlockRequest}/${friend.conversation_id}`, { type: "blocked"}, {withCredentials: true})
-    if (res.data.success) {
+  const block = async () => {
+    try {
+      await axiosInstance.patch(
+        `${API_URLS.archiveBlockRequest}/${friend.conversation_id}`,
+        { type: "blocked" },
+        { withCredentials: true }
+      );
+
       toast.success(`${blockStatus}ed successfully`);
       setBlockStatus(() => blockStatus === "Block" ? "Unblock" : "Block");
+    } catch (error) {
+      toast.error(`Failed to ${blockStatus.toLowerCase()}, please try again later`);
     }
+
   }
   const handleViewExpensesClose = () => setViewExpensesOpen(false);
   const addSettlement = (settlementAmount: number) => {
@@ -55,62 +70,62 @@ const Header: React.FC<{friend: Friend, handleViewChange: (view: "All" | "Messag
   }
   return (
     <>
-    <Settlement handleSettlement={addSettlement} selectedFriend={friend} open={settlementOpen} handleSettlementClose={handleSettlementClose}/>
-    <Box className="flex justify-between p-2 content-center">
-      <ViewExpenses friend={friend} open={viewExpensesOpen} handleViewExpensesClose={handleViewExpensesClose}/>
-      <Box className="flex justify-between gap-2 items-center">
-        <ArrowBack />
-        <ListItemAvatar sx={{ minWidth: 32 }}>
-          <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 32, height: 32 }} />
-        </ListItemAvatar>
-        <Typography variant="h6" textAlign="center">{friend.friend.first_name} {friend.friend.last_name}</Typography>
-      </Box>
-      <div>
-        <Box className="flex gap-2">
-          <FormControl fullWidth size="small">
-            <Select
-              labelId="demo-simple-select-label"
-              id="demo-simple-select"
-              value={view}
-              onChange={viewChange}
-            >
-              <MenuItem value="All">All</MenuItem>
-              <MenuItem value="Messages">Messages</MenuItem>
-              <MenuItem value="Expenses">Expenses</MenuItem>
-            </Select>
-          </FormControl>
-          <IconButton
-            aria-label="more"
-            id="long-button"
-            aria-controls={open ? 'long-menu' : undefined}
-            aria-expanded={open ? 'true' : undefined}
-            aria-haspopup="true"
-            onClick={handleClick}
-          >
-            <MoreVert />
-          </IconButton>
+      <Settlement handleSettlement={addSettlement} selectedFriend={friend} open={settlementOpen} handleSettlementClose={handleSettlementClose} />
+      <Box className="flex justify-between p-2 content-center">
+        <ViewExpenses friend={friend} open={viewExpensesOpen} handleViewExpensesClose={handleViewExpensesClose} />
+        <Box className="flex justify-between gap-2 items-center">
+          <ArrowBack />
+          <ListItemAvatar sx={{ minWidth: 32 }}>
+            <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 32, height: 32 }} />
+          </ListItemAvatar>
+          <Typography variant="h6" textAlign="center">{friend.friend.first_name} {friend.friend.last_name}</Typography>
         </Box>
-        <Menu
-          id="long-menu"
-          anchorEl={anchorEl}
-          open={open}
-          onClose={handleClose}
-        >
-          <MenuItem onClick={settlement}>
-            Settle up
-          </MenuItem>
-          <MenuItem onClick={viewExpenses}>
-            View Expenses
-          </MenuItem>
-          <MenuItem onClick={archive}>
-            {archiveStatus}
-          </MenuItem>
-          <MenuItem onClick={block}>
-            {blockStatus}
-          </MenuItem>
-        </Menu>
-      </div>
-    </Box>
+        <div>
+          <Box className="flex gap-2">
+            <FormControl fullWidth size="small">
+              <Select
+                labelId="demo-simple-select-label"
+                id="demo-simple-select"
+                value={view}
+                onChange={viewChange}
+              >
+                <MenuItem value="All">All</MenuItem>
+                <MenuItem value="Messages">Messages</MenuItem>
+                <MenuItem value="Expenses">Expenses</MenuItem>
+              </Select>
+            </FormControl>
+            <IconButton
+              aria-label="more"
+              id="long-button"
+              aria-controls={open ? 'long-menu' : undefined}
+              aria-expanded={open ? 'true' : undefined}
+              aria-haspopup="true"
+              onClick={handleClick}
+            >
+              <MoreVert />
+            </IconButton>
+          </Box>
+          <Menu
+            id="long-menu"
+            anchorEl={anchorEl}
+            open={open}
+            onClose={handleClose}
+          >
+            <MenuItem onClick={settlement}>
+              Settle up
+            </MenuItem>
+            <MenuItem onClick={viewExpenses}>
+              View Expenses
+            </MenuItem>
+            <MenuItem onClick={archive}>
+              {archiveStatus}
+            </MenuItem>
+            <MenuItem onClick={block}>
+              {blockStatus}
+            </MenuItem>
+          </Menu>
+        </div>
+      </Box>
     </>
   )
 }

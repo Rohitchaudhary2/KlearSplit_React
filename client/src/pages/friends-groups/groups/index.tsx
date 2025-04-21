@@ -28,7 +28,7 @@ const GroupsPage = () => {
   const [groupInvites, setGroupInvites] = useState<GroupData[]>([]);
   const [groups, setGroups] = useState<GroupData[]>([]);
   const [messages, setMessages] = useState<GroupMessageData[]>([]);
-  const [expenses, setExpenses] = useState<GroupExpenseData[]>([]);
+  const [expenses, setExpenses] = useState<(GroupExpenseData | GroupSettlementData)[]>([]);
   const [combined, setCombined] = useState<(GroupMessageData | GroupExpenseData | GroupSettlementData)[]>([]);
   const [loading, setLoading] = useState(false);
   const [allMessagesLoaded, setAllMessagesLoaded] = useState(false);
@@ -72,8 +72,8 @@ const GroupsPage = () => {
       const id = searchParams.get('id');
       const success = searchParams.get('success');
       const AllGroups = [...groupInvites, ...groups];
-        const group = AllGroups.find((group) => group.group_id === id);
-        setselectedGroup(group);
+      const group = AllGroups.find((group) => group.group_id === id);
+      setselectedGroup(group);
       if (success === "true") {
         toast.success("Payment successful");
       }
@@ -121,15 +121,16 @@ const GroupsPage = () => {
   // }, [messages.length, expenses.length, combined.length])
   useEffect(() => {
     const getGroups = async () => {
-      const res = await axiosInstance.get(`${API_URLS.getGroups}`, {
-        params: {
-          status: "PENDING"
-        },
-        withCredentials: true
-      });
-      if (res.data.success) {
+      try {
+        const res = await axiosInstance.get(`${API_URLS.getGroups}`, {
+          params: { status: "PENDING" },
+          withCredentials: true
+        });
+
         setGroupInvites(res.data.data.invitedGroups);
         setGroups(res.data.data.acceptedGroups);
+      } catch (error) {
+        toast.error("Failed to fetch groups, please try again later");
       }
     }
     getGroups();
@@ -238,9 +239,9 @@ const GroupsPage = () => {
           setCombined(combinedWithName);
 
         } catch (error) {
-          console.error("Error fetching data:", error);
+          toast.error("Something went wrong, please try again later!")
         } finally {
-          setLoading(() => false); // Only done when all above are finished (or errored)
+          setLoading(() => false);
         }
       };
       fetchAllData();
@@ -254,94 +255,149 @@ const GroupsPage = () => {
           case "All": {
             if (!allCombinedLoaded && combined.length) {
               setLoading(() => true)
-              const res = await axiosInstance.get(`${API_URLS.fetchGroupCombined}/${selectedGroup?.group_id}`, {
-                params: { pageSize, timestamp: timestampCombined },
-                withCredentials: true
-              });
-              const combined = sortBycreatedAt(res.data.data);
-              if (combined.length < 20) setAllCombinedLoaded(true);
-              if (combined.length) setTimestampCombined(combined[0].createdAt);
-              const combinedWithName = combined.map((item) => {
-                if ("group_message_id" in item) {
-                  const sender = getFullNameAndImage(groupMembers!.find((member) =>
-                    item.sender_id === member.group_membership_id
-                  ));
-                  return {
-                    ...item,
-                    senderName: sender.fullName,
-                    senderImage: sender.imageUrl
-                  };
-                } else if ("group_expense_id" in item) {
-                  if (item.payer_id === currentMember?.group_membership_id) {
-                    item.payer = getFullNameAndImage(currentMember);
-                  } else {
-                    const payer = groupMembers!.find((member) => item.payer_id === member.group_membership_id);
-                    item.payer = getFullNameAndImage(payer);
+              try {
+                const res = await axiosInstance.get(
+                  `${API_URLS.fetchGroupCombined}/${selectedGroup?.group_id}`,
+                  {
+                    params: { pageSize, timestamp: timestampCombined },
+                    withCredentials: true
                   }
-                  return item
-                } else {
-                  const debtor = groupMembers!.find((member) => item.debtor_id === member.group_membership_id);
-                  item.debtor = getFullNameAndImage(debtor);
-                  return item;
-                }
-              })
-              setCombined((prev) => [...combinedWithName, ...prev]);
-              setScrollHeight(scrollHeight);
-              setLoading(() => false)
+                );
+
+                const combined = sortBycreatedAt(res.data.data);
+
+                if (combined.length < 20) setAllCombinedLoaded(true);
+                if (combined.length) setTimestampCombined(combined[0].createdAt);
+
+                const combinedWithName = combined.map((item) => {
+                  if ("group_message_id" in item) {
+                    const sender = getFullNameAndImage(
+                      groupMembers!.find(
+                        (member) => item.sender_id === member.group_membership_id
+                      )
+                    );
+                    return {
+                      ...item,
+                      senderName: sender.fullName,
+                      senderImage: sender.imageUrl
+                    };
+                  } else if ("group_expense_id" in item) {
+                    if (item.payer_id === currentMember?.group_membership_id) {
+                      item.payer = getFullNameAndImage(currentMember);
+                    } else {
+                      const payer = groupMembers!.find(
+                        (member) => item.payer_id === member.group_membership_id
+                      );
+                      item.payer = getFullNameAndImage(payer);
+                    }
+                    return item;
+                  } else {
+                    const debtor = groupMembers!.find(
+                      (member) => item.debtor_id === member.group_membership_id
+                    );
+                    item.debtor = getFullNameAndImage(debtor);
+                    return item;
+                  }
+                });
+
+                setCombined((prev) => [...combinedWithName, ...prev]);
+                setScrollHeight(scrollHeight);
+              } catch (error) {
+                toast.error("Failed to fetch group activity, please try again later");
+              } finally {
+                setLoading(false);
+              }
             }
             break;
           }
           case "Messages": {
             if (!allMessagesLoaded && messages.length) {
               setLoading(() => true)
-              const res = await axiosInstance.get(`${API_URLS.getGroupMessages}/${selectedGroup?.group_id}`, {
-                params: { pageSize, timestamp: timestampMessages },
-                withCredentials: true
-              });
-              const messages = res.data.data.sort((a: GroupMessageData, b: GroupMessageData) => (a.createdAt < b.createdAt ? -1 : 1))
-              if (messages.length < 20) setAllMessagesLoaded(true);
-              if (messages.length) setTimestampMessages(messages[0].createdAt);
-              const messagesWithName = messages.map((message: GroupMessageData) => {
-                const sender = getFullNameAndImage(groupMembers!.find((member) =>
-                  message.sender_id === member.group_membership_id
-                ));
-                return {
-                  ...message,
-                  senderName: sender.fullName,
-                  senderImage: sender.imageUrl
-                };
-              });
-              setMessages((prev) => [...messagesWithName as GroupMessageData[], ...prev])
-              setScrollHeight(scrollHeight);
-              setLoading(() => false)
+              try {
+                const res = await axiosInstance.get(
+                  `${API_URLS.getGroupMessages}/${selectedGroup?.group_id}`,
+                  {
+                    params: { pageSize, timestamp: timestampMessages },
+                    withCredentials: true
+                  }
+                );
+
+                const messages = res.data.data.sort(
+                  (a: GroupMessageData, b: GroupMessageData) =>
+                    a.createdAt < b.createdAt ? -1 : 1
+                );
+
+                if (messages.length < 20) setAllMessagesLoaded(true);
+                if (messages.length) setTimestampMessages(messages[0].createdAt);
+
+                const messagesWithName = messages.map((message: GroupMessageData) => {
+                  const sender = getFullNameAndImage(
+                    groupMembers!.find(
+                      (member) => message.sender_id === member.group_membership_id
+                    )
+                  );
+                  return {
+                    ...message,
+                    senderName: sender.fullName,
+                    senderImage: sender.imageUrl
+                  };
+                });
+
+                setMessages((prev) => [...messagesWithName as GroupMessageData[], ...prev]);
+                setScrollHeight(scrollHeight);
+              } catch (error) {
+                toast.error("Failed to fetch group messages, please try again later");
+              } finally {
+                setLoading(false);
+              }
             }
             break;
           }
           case "Expenses": {
             if (!allExpensesLoaded && expenses.length) {
               setLoading(true);
-              const res = await axiosInstance.get(`${API_URLS.fetchExpensesSettlements}/${selectedGroup?.group_id}`, {
-                params: { pageSize, timestamp: timestampExpenses },
-                withCredentials: true
-              });
-              const expenses = res.data.data.sort((a: GroupExpenseData | GroupSettlementData, b: GroupExpenseData | GroupSettlementData) => (a.createdAt < b.createdAt ? -1 : 1))
-              if (expenses.length < 20) setAllExpensesLoaded(true);
-              if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
-              expenses.forEach((expense: GroupExpenseData | GroupSettlementData) => {
-                if (expense.payer_id === currentMember?.group_membership_id) {
-                  expense.payer = getFullNameAndImage(currentMember);
-                } else {
-                  const payer = groupMembers!.find((member) => expense.payer_id === member.group_membership_id);
-                  expense.payer = getFullNameAndImage(payer);
-                }
-                if ("group_settlement_id" in expense) {
-                  const debtor = groupMembers!.find((member) => expense.debtor_id === member.group_membership_id);
-                  expense.debtor = getFullNameAndImage(debtor);
-                }
-              });
-              setExpenses((prev) => [...expenses as GroupExpenseData[], ...prev]);
-              setScrollHeight(scrollHeight)
-              setLoading(false)
+              try {
+                const res = await axiosInstance.get(
+                  `${API_URLS.fetchExpensesSettlements}/${selectedGroup?.group_id}`,
+                  {
+                    params: { pageSize, timestamp: timestampExpenses },
+                    withCredentials: true
+                  }
+                );
+
+                const expenses = res.data.data.sort(
+                  (a: GroupExpenseData | GroupSettlementData, b: GroupExpenseData | GroupSettlementData) =>
+                    a.createdAt < b.createdAt ? -1 : 1
+                );
+
+                if (expenses.length < 20) setAllExpensesLoaded(true);
+                if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
+
+                expenses.forEach((expense: GroupExpenseData | GroupSettlementData) => {
+                  if (expense.payer_id === currentMember?.group_membership_id) {
+                    expense.payer = getFullNameAndImage(currentMember);
+                  } else {
+                    const payer = groupMembers!.find(
+                      (member) => expense.payer_id === member.group_membership_id
+                    );
+                    expense.payer = getFullNameAndImage(payer);
+                  }
+
+                  if ("group_settlement_id" in expense) {
+                    const debtor = groupMembers!.find(
+                      (member) => expense.debtor_id === member.group_membership_id
+                    );
+                    expense.debtor = getFullNameAndImage(debtor);
+                  }
+                });
+
+                setExpenses((prev) => [...expenses as GroupExpenseData[], ...prev]);
+                setScrollHeight(scrollHeight);
+              } catch (error) {
+                toast.error("Failed to fetch group expenses/settlements, please try again later");
+              } finally {
+                setLoading(false);
+              }
             }
           }
         }
@@ -376,12 +432,26 @@ const GroupsPage = () => {
   const handleAddExpensesClose = () => setAddExpenseDialogOpen(false);
   const handleAddExpensesOpen = () => setAddExpenseDialogOpen(true);
   const handleAcceptRejectRequest = async (conversationId: string, status: string) => {
-    const res = await axiosInstance.patch(`${API_URLS.acceptRejectRequest}/${conversationId}`, { status }, { withCredentials: true });
-    if (res.data.success) {
-      const acceptedRequest = groupInvites.find(request => request.group_id === conversationId);
-      setGroupInvites(groupInvites.filter((request) => request.group_id !== conversationId));
-      setGroups([...groups, { ...acceptedRequest!, "status": "ACCEPTED" }])
-      toast.success(`Request ${status} successfully`)
+    try {
+      const res = await axiosInstance.patch(
+        `${API_URLS.acceptRejectRequest}/${conversationId}`,
+        { status },
+        { withCredentials: true }
+      );
+
+      if (res.data.success) {
+        const acceptedRequest = groupInvites.find((request) => request.group_id === conversationId);
+
+        // Remove the accepted request from the invites list
+        setGroupInvites(groupInvites.filter((request) => request.group_id !== conversationId));
+
+        // Add the accepted request to the groups list
+        setGroups([...groups, { ...acceptedRequest!, status: "ACCEPTED" }]);
+
+        toast.success(`Request ${status} successfully`);
+      }
+    } catch (error) {
+      toast.error("Failed to process the request, please try again later");
     }
   }
   const handleViewChange = (view: "All" | "Messages" | "Expenses") => {
@@ -410,13 +480,23 @@ const GroupsPage = () => {
     return filteredMembers;
   }
   const handleSelectGroupData = async (group: GroupData | undefined) => {
+    // if (!user) return;
     if (group) {
-      const res = await axiosInstance.get(`${API_URLS.group}/${group.group_id}`, { withCredentials: true })
-      if (res.data.success) {
+      try {
+        const res = await axiosInstance.get(
+          `${API_URLS.group}/${group.group_id}`,
+          { withCredentials: true }
+        );
+
         const filteredMembers = filterMembers(res.data.data);
-        setGroupMembers(filteredMembers)
-        const currentMember = filteredMembers.find((member) => user?.user_id === member.member_id);
+        setGroupMembers(filteredMembers);
+
+        const currentMember = filteredMembers.find(
+          (member) => user?.user_id === member.member_id
+        );
         setCurrentMember(currentMember);
+      } catch (error) {
+        toast.error("Failed to fetch group data, please try again later");
       }
     }
     if (group === selectedGroup) return;
@@ -436,28 +516,58 @@ const GroupsPage = () => {
     if (group) joinRoom(group.group_id);
   }
   const addExpense = async (expenseInfo: FormData) => {
-    setLoaders((prev) => ({...prev, addExpense: true}));
-    const res = await axiosInstance.post(`${API_URLS.addGroupExpense}/${selectedGroup?.group_id}`, expenseInfo, { withCredentials: true });
-    if (res.data.success) {
-      const debtorAmount = res.data.data.expenseParticipants.reduce((acc: number, val: ExpenseParticipant) => acc + parseFloat(val.debtor_amount), 0)      
-      setCombined((prev) => [...prev, {...res.data.data.expense, "total_debt_amount": debtorAmount}]);
-      setExpenses((prev) => [...prev, {...res.data.data.expense, "total_debt_amount": debtorAmount}]);
-      selectedGroup!.balance_amount = JSON.stringify(Math.round((parseFloat(selectedGroup!.balance_amount) + (currentMember?.group_membership_id === res.data.data.expense.payer_id ? debtorAmount : -debtorAmount))*100) / 100);
-      toast.success("Expense Added successfully")
+    setLoaders((prev) => ({ ...prev, addExpense: true }));
+    try {
+      const res = await axiosInstance.post(
+        `${API_URLS.addGroupExpense}/${selectedGroup?.group_id}`,
+        expenseInfo,
+        { withCredentials: true }
+      );
+
+      const debtorAmount = res.data.data.expenseParticipants.reduce(
+        (acc: number, val: ExpenseParticipant) => acc + parseFloat(val.debtor_amount),
+        0
+      );
+
+      const expenseData = { ...res.data.data.expense, total_debt_amount: debtorAmount };
+
+      setCombined((prev) => [...prev, expenseData]);
+      setExpenses((prev) => [...prev, expenseData]);
+
+      selectedGroup!.balance_amount = JSON.stringify(
+        Math.round((parseFloat(selectedGroup!.balance_amount) + (currentMember?.group_membership_id === res.data.data.expense.payer_id ? debtorAmount : -debtorAmount)) * 100) / 100
+      );
+
+      toast.success("Expense added successfully");
+    } catch (error) {
+      toast.error("Failed to add expense, please try again later");
+    } finally {
+      setLoaders((prev) => ({ ...prev, addExpense: false }));
     }
-    setLoaders((prev) => ({...prev, addExpense: false}));
   }
   const handleSettlement = async (settlementAmount: number) => {
-    const res = await axiosInstance.post(
-      `${API_URLS.addExpense}/${selectedGroup?.group_id}`,
-      { split_type: "SETTLEMENT", total_amount: settlementAmount },
-      { withCredentials: true }
-    )
-    if (res.data.success) {
-      setCombined((prev) => [...prev, res.data.data]);
-      setExpenses((prev) => [...prev, res.data.data]);
-      selectedGroup!.balance_amount = JSON.stringify(parseFloat(selectedGroup!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
-      toast.success("Settlement added successfully")
+    try {
+      const res = await axiosInstance.post(
+        `${API_URLS.addExpense}/${selectedGroup?.group_id}`,
+        { split_type: "SETTLEMENT", total_amount: settlementAmount },
+        { withCredentials: true }
+      );
+
+      const newExpenseData = res.data.data;
+
+      setCombined((prev) => [...prev, newExpenseData]);
+      setExpenses((prev) => [...prev, newExpenseData]);
+
+      selectedGroup!.balance_amount = JSON.stringify(
+        parseFloat(selectedGroup!.balance_amount) +
+        (user?.user_id === newExpenseData.payer_id
+          ? parseFloat(newExpenseData.debtor_amount)
+          : -parseFloat(newExpenseData.debtor_amount))
+      );
+
+      toast.success("Settlement added successfully");
+    } catch (error) {
+      toast.error("Failed to add settlement, please try again later");
     }
   }
 
@@ -547,10 +657,10 @@ const GroupsPage = () => {
                     <GroupDetails group={selectedGroup} groupMembers={groupMembers!} currentMember={currentMember!} handleGroupDetailsClose={() => handleGroupDetailsOpen(false)} />
                     :
                     <>
-                      <Box><Header 
-                      currentMember={currentMember!}
-                      groupMembers={groupMembers!}
-                      handleGroupDetailsOpen={() => handleGroupDetailsOpen(true)} handleBackButton={() => handleSelectGroupData(undefined)} group={selectedGroup} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
+                      <Box><Header
+                        currentMember={currentMember!}
+                        groupMembers={groupMembers!}
+                        handleGroupDetailsOpen={() => handleGroupDetailsOpen(true)} handleBackButton={() => handleSelectGroupData(undefined)} group={selectedGroup} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
                       <Divider />
                       <Box ref={messageContainer} className="h-[67vh] overflow-auto">
                         {loading && (
@@ -572,16 +682,37 @@ const GroupsPage = () => {
                         }
                         {
                           view === "Expenses" ?
-                            expenses.map((expense) => (
-                              <ExpenseItem
-                                key={expense.group_expense_id}
-                                expense={expense}
-                                isCurrentUserPayer={expense.payer_id === currentMember?.group_membership_id}
-                                imageUrl="vite.svg"
-                                currentUserImageUrl="vite.svg"
-                              // onRetryExpenseAddition={handleRetry}
-                              />
-                            )) : null
+                            expenses.map((item) => {
+                              if ("group_expense_id" in item) {
+                                return (
+                                  <ExpenseItem
+                                    key={item.group_expense_id}
+                                    expense={item}
+                                    isCurrentUserPayer={item.payer_id === currentMember?.group_membership_id}
+                                    imageUrl="vite.svg"
+                                    currentUserImageUrl="vite.svg"
+                                  // onRetryExpenseAddition={handleRetry}
+                                  />
+                                )
+                              }
+
+                              if ("group_settlement_id" in item) {
+                                const payer = groupMembers!.find((member) => member.group_membership_id === item.payer_id);
+                                const debtor = groupMembers!.find((member) => member.group_membership_id === item.debtor_id);
+                                return (
+                                  <SettlementCard key={item.group_settlement_id}
+                                    isCurrentUserPayer={item.payer_id === currentMember?.group_membership_id}
+                                    payerImageUrl={payer!.image_url}
+                                    payerName={`${payer!.first_name} ${payer!.last_name}`}
+                                    debtorName={`${debtor!.first_name} ${debtor!.last_name}`}
+                                    settlement={item}
+                                    currentUserImageUrl={currentMember!.image_url ?? "image.png"}
+                                  />
+                                )
+                              }
+                            }
+                            )
+                            : null
                         }
                         {
                           view === "All" ?

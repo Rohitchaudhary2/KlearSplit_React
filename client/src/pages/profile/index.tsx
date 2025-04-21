@@ -43,14 +43,14 @@ const Profile = () => {
     const [image, setImage] = useState<File | null>(null);
     const [previewImage, setPreviewImage] = useState<string>();
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Optionally upload to server here
-      setImage(file);
-      setPreviewImage(`assets/${file.name}`)
-    }
-  };
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // Optionally upload to server here
+            setImage(file);
+            setPreviewImage(`assets/${file.name}`)
+        }
+    };
     const [isSaveChangesDisabled, setIsSaveChangesDisabled] = useState(true);
     const [isChangePasswordDisabled, setIsChangePasswordDisabled] = useState(true);
     const onChange = (key: string, value: string) => {
@@ -125,24 +125,42 @@ const Profile = () => {
     const handleUpdateProfile = async () => {
         const formData = new FormData();
         formData.append("first_name", profileInfo.first_name);
-        if(profileInfo.last_name) formData.append("last_name", profileInfo.last_name!);
-        if(profileInfo.phone) formData.append("phone", profileInfo.phone)
-        if(image) formData.append("profile", image)
-        const res = await axiosInstance.patch(`${API_URLS.updateProfile}/${user?.user_id}`, formData, { withCredentials: true });
-        toast.success("Profile Updated successfully!")
-        dispatch(login(res.data.data));
+        if (profileInfo.last_name) formData.append("last_name", profileInfo.last_name!);
+        if (profileInfo.phone) formData.append("phone", profileInfo.phone)
+        if (image) formData.append("profile", image)
+        try {
+            const res = await axiosInstance.patch(
+                `${API_URLS.updateProfile}/${user?.user_id}`,
+                formData,
+                { withCredentials: true }
+            );
+
+            toast.success("Profile updated successfully!");
+            dispatch(login(res.data.data));
+        } catch (error) {
+            toast.error("Failed to update profile, please try again later");
+        }
     }
-    const handleChangePassword = async() => {
-        const res = await axiosInstance.patch(`${API_URLS.updateProfile}/${user?.user_id}`, {
-            "password": passwords.currentPassword,
-            "new_password": passwords.newPassword
-        }, { withCredentials: true });
-        toast.success("Password changed successfully")
-        setPasswords({
-            newPassword: "",
-            currentPassword: "",
-            confirmPassword: ""
-        })
+    const handleChangePassword = async () => {
+        try {
+            await axiosInstance.patch(
+                `${API_URLS.updateProfile}/${user?.user_id}`,
+                {
+                    "password": passwords.currentPassword,
+                    "new_password": passwords.newPassword
+                },
+                { withCredentials: true }
+            );
+
+            toast.success("Password changed successfully");
+            setPasswords({
+                newPassword: "",
+                currentPassword: "",
+                confirmPassword: ""
+            });
+        } catch (error) {
+            toast.error("Failed to change password, please try again later");
+        }
     }
     return (
         <Box className="flex flex-col min-h-[89vh] justify-center items-center content-center">

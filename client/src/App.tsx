@@ -8,17 +8,20 @@ import { Box } from '@mui/material'
 import HashLoader from "react-spinners/ClipLoader";
 import { API_URLS } from './constants/apiUrls'
 import axiosInstance from './utils/axiosInterceptor'
+import { toast } from 'sonner'
 
 function App() {
   const [loading, setLoading] = useState(true);
   const dispatch = useDispatch();
   useEffect(() => {
     const getUser = async () => {
-      const user = await axiosInstance.get(API_URLS.fetchUser, { withCredentials: true });
-      if (user) {
-        dispatch(login(user.data.data));
-      }
+      try {
+        const user = await axiosInstance.get(API_URLS.fetchUser, { withCredentials: true });
 
+        dispatch(login(user.data.data)); // Dispatch the user data to the store
+      } catch (error) {
+        toast.error("Failed to fetch user data. Please try again later.");
+      }
       setLoading(false);
     }
 

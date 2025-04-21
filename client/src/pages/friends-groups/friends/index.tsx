@@ -67,8 +67,8 @@ const Friendspage = () => {
       const id = searchParams.get('id');
       const success = searchParams.get('success');
       const AllFriends = [...friendRequests, ...friends];
-        const friend = AllFriends.find((friend) => friend.conversation_id === id);
-        setSelectedFriend(friend);
+      const friend = AllFriends.find((friend) => friend.conversation_id === id);
+      setSelectedFriend(friend);
       if (success === "true") {
         toast.success("Payment successful");
       }
@@ -211,50 +211,82 @@ const Friendspage = () => {
           case "All": {
             if (!allCombinedLoaded && combined.length) {
               setLoading(() => true)
-              const res = await axiosInstance.get(`${API_URLS.getCombined}/${selectedFriend?.conversation_id}`, {
-                params: { pageSize, timestamp: timestampCombined },
-                withCredentials: true
-              });
-              const combined = sortBycreatedAt(res.data.data);
-              if (combined.length < 20) setAllCombinedLoaded(true);
-              if (combined.length) setTimestampCombined(combined[0].createdAt);
-              // combined.unshift(...combined);
-              // setCombined(() => combined);
-              setCombined((prev) => [...combined, ...prev]);
-              setScrollHeight(scrollHeight);
-              setLoading(() => false)
+              // const res = await axiosInstance.get(`${API_URLS.getCombined}/${selectedFriend?.conversation_id}`, {
+              //   params: { pageSize, timestamp: timestampCombined },
+              //   withCredentials: true
+              // });
+              // const combined = sortBycreatedAt(res.data.data);
+              // if (combined.length < 20) setAllCombinedLoaded(true);
+              // if (combined.length) setTimestampCombined(combined[0].createdAt);
+              // setCombined((prev) => [...combined, ...prev]);
+              // setScrollHeight(scrollHeight);
+              // setLoading(() => false)
+              try {
+                const res = await axiosInstance.get(`${API_URLS.getCombined}/${selectedFriend?.conversation_id}`, {
+                  params: { pageSize, timestamp: timestampCombined },
+                  withCredentials: true
+                });
+
+                const combined = sortBycreatedAt(res.data.data);
+
+                if (combined.length < 20) setAllCombinedLoaded(true);
+                if (combined.length) setTimestampCombined(combined[0].createdAt);
+
+                setCombined((prev) => [...combined, ...prev]);
+                setScrollHeight(scrollHeight);
+              } catch (error) {
+                toast.error("Something went wrong, please try again later")
+              } finally {
+                setLoading(false);
+              }
             }
             break;
           }
           case "Messages": {
             if (!allMessagesLoaded && messages.length) {
               setLoading(() => true)
-              const res = await axiosInstance.get(`${API_URLS.getMessages}/${selectedFriend?.conversation_id}`, {
-                params: { pageSize, timestamp: timestampMessages },
-                withCredentials: true
-              });
-              const messages = sortBycreatedAt(res.data.data);
-              if (messages.length < 20) setAllMessagesLoaded(true);
-              if (messages.length) setTimestampMessages(messages[0].createdAt);
-              setMessages((prev) => [...messages as Message[], ...prev])
-              setScrollHeight(scrollHeight);
-              setLoading(() => false)
+              try {
+                const res = await axiosInstance.get(`${API_URLS.getMessages}/${selectedFriend?.conversation_id}`, {
+                  params: { pageSize, timestamp: timestampMessages },
+                  withCredentials: true
+                });
+
+                const messages = sortBycreatedAt(res.data.data);
+
+                if (messages.length < 20) setAllMessagesLoaded(true);
+                if (messages.length) setTimestampMessages(messages[0].createdAt);
+
+                setMessages((prev) => [...messages as Message[], ...prev]);
+                setScrollHeight(scrollHeight);
+              } catch (error) {
+                toast.error("Something went wrong, please try again later");
+              } finally {
+                setLoading(false);
+              }
             }
             break;
           }
           case "Expenses": {
             if (!allExpensesLoaded && expenses.length) {
               setLoading(true)
-              const res = await axiosInstance.get(`${API_URLS.getExpenses}/${selectedFriend?.conversation_id}`, {
-                params: { pageSize, timestamp: timestampExpenses },
-                withCredentials: true
-              });
-              const expenses = sortBycreatedAt(res.data.data);
-              if (expenses.length < 20) setAllExpensesLoaded(true);
-              if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
-              setExpenses((prev) => [...expenses as Expense[], ...prev]);
-              setScrollHeight(scrollHeight)
-              setLoading(false)
+              try {
+                const res = await axiosInstance.get(`${API_URLS.getExpenses}/${selectedFriend?.conversation_id}`, {
+                  params: { pageSize, timestamp: timestampExpenses },
+                  withCredentials: true
+                });
+
+                const expenses = sortBycreatedAt(res.data.data);
+
+                if (expenses.length < 20) setAllExpensesLoaded(true);
+                if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
+
+                setExpenses((prev) => [...expenses as Expense[], ...prev]);
+                setScrollHeight(scrollHeight);
+              } catch (error) {
+                toast.error("Something went wrong, please try again later");
+              } finally {
+                setLoading(false);
+              }
             }
           }
         }
@@ -330,29 +362,70 @@ const Friendspage = () => {
   }
   const addExpense = async (expenseInfo: FormData) => {
     setLoaders((prev) => ({ ...prev, addExpense: true }));
-    const res = await axiosInstance.post(`${API_URLS.addExpense}/${selectedFriend?.conversation_id}`, expenseInfo, { withCredentials: true });
-    if (res.data.success) {
-      const expense = { ...res.data.data, "payer": res.data.data.payer_id === user?.user_id ? "You" : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}` }
+    try {
+      const res = await axiosInstance.post(
+        `${API_URLS.addExpense}/${selectedFriend?.conversation_id}`,
+        expenseInfo,
+        { withCredentials: true }
+      );
+
+      const expense = {
+        ...res.data.data,
+        payer: res.data.data.payer_id === user?.user_id
+          ? "You"
+          : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}`
+      };
+
       setCombined((prev) => [...prev, expense]);
       setExpenses((prev) => [...prev, expense]);
-      selectedFriend!.balance_amount = JSON.stringify(parseFloat(selectedFriend!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
-      toast.success("Expense Added successfully")
+
+      selectedFriend!.balance_amount = JSON.stringify(
+        parseFloat(selectedFriend!.balance_amount) +
+        (user?.user_id === res.data.data.payer_id
+          ? parseFloat(res.data.data.debtor_amount)
+          : -parseFloat(res.data.data.debtor_amount))
+      );
+
+      toast.success("Expense added successfully");
+    } catch (error) {
+      toast.error("Failed to add expense, please try again later");
+    } finally {
+      setLoaders((prev) => ({ ...prev, addExpense: false }));
     }
-    setLoaders((prev) => ({ ...prev, addExpense: false }))
+
   }
   const handleSettlement = async (settlementAmount: number) => {
-    const res = await axiosInstance.post(
-      `${API_URLS.addExpense}/${selectedFriend?.conversation_id}`,
-      { split_type: "SETTLEMENT", total_amount: settlementAmount },
-      { withCredentials: true }
-    )
-    if (res.data.success) {
-      const settlement = { ...res.data.data, "payer": res.data.data.payer_id === user?.user_id ? "You" : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}` }
+    try {
+      const res = await axiosInstance.post(
+        `${API_URLS.addExpense}/${selectedFriend?.conversation_id}`,
+        { split_type: "SETTLEMENT", total_amount: settlementAmount },
+        { withCredentials: true }
+      );
+
+      const settlement = {
+        ...res.data.data,
+        payer: res.data.data.payer_id === user?.user_id
+          ? "You"
+          : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}`
+      };
+
       setCombined((prev) => [...prev, settlement]);
       setExpenses((prev) => [...prev, settlement]);
-      selectedFriend!.balance_amount = JSON.stringify(parseFloat(selectedFriend!.balance_amount) + (user?.user_id === res.data.data.payer_id ? parseFloat(res.data.data.debtor_amount) : -parseFloat(res.data.data.debtor_amount)));
-      toast.success("Settlement added successfully")
+
+      selectedFriend!.balance_amount = JSON.stringify(
+        parseFloat(selectedFriend!.balance_amount) +
+        (user?.user_id === res.data.data.payer_id
+          ? parseFloat(res.data.data.debtor_amount)
+          : -parseFloat(res.data.data.debtor_amount))
+      );
+
+      toast.success("Settlement added successfully");
+    } catch (error) {
+      toast.error("Failed to add settlement, please try again later");
+    } finally {
+      setLoaders((prev) => ({ ...prev, addExpense: false }));
     }
+
   }
   const handleAddFriendRequests = (requests: Friend[]) => {
     setFriendRequests(requests)
@@ -360,7 +433,7 @@ const Friendspage = () => {
   return (
     <>
       {
-        selectedFriend && user && <AddExpense handleBulkAddExpenses={handleBulkAddExpenses} friend={selectedFriend!.friend} open={addExpenseDialogOpen} handleAddExpense={addExpense} handleAddExpensesClose={handleAddExpensesClose} />
+        selectedFriend && user && <AddExpense id={selectedFriend!.conversation_id} handleBulkAddExpenses={handleBulkAddExpenses} friend={selectedFriend!.friend} open={addExpenseDialogOpen} handleAddExpense={addExpense} handleAddExpensesClose={handleAddExpensesClose} />
       }
       <Box className="grid gap-4 grid-cols-4 h-[89.5vh]">
         <Box className="p-4 pe-0 flex flex-col flex-wrap h-full col-span-4 md:col-span-1" hidden={false} sx={{ backgroundColor: "#A1E3F9" }}>
@@ -405,7 +478,7 @@ const Friendspage = () => {
                               primary={
                                 <Box className="flex justify-between">
                                   <Box>{friend.friend.first_name} {friend.friend.last_name}</Box>
-                                  <Box className="flex gap-2" sx={{ color: parseFloat(friend.balance_amount) < 0 ? 'red' : 'green' }}>₹{friend.balance_amount} {(activeButton === "friendRequests" && friend.status === "RECEIVER") ? <>
+                                  <Box className="flex gap-2" sx={{ color: parseFloat(friend.balance_amount) < 0 ? 'red' : 'green' }}>₹{Math.abs(parseFloat(friend.balance_amount))} {(activeButton === "friendRequests" && friend.status === "RECEIVER") ? <>
                                     <button onClick={() => handleAcceptRejectRequest(friend.conversation_id, "ACCEPTED")}><Check /></button>
                                     <button onClick={() => handleAcceptRejectRequest(friend.conversation_id, "REJECTED")}><Clear /></button>
                                   </> : null}</Box>

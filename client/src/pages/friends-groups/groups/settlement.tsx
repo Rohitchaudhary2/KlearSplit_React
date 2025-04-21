@@ -8,6 +8,7 @@ import { useSelector } from "react-redux";
 import { GroupMemberData } from "./index.model";
 import { API_URLS } from "../../../constants/apiUrls";
 import axiosInstance from "../../../utils/axiosInterceptor";
+import { toast } from "sonner";
 
 const Settlement: React.FC<{
     open: boolean,
@@ -20,24 +21,30 @@ const Settlement: React.FC<{
     const user = useSelector((store: RootState) => store.auth.user)
     const [settlementAmount, setSettlementAmount] = useState(settlement_amount);
     const onChange = (value: string) => {
-        if(isNaN(parseFloat(value))) value = "0"
+        if (isNaN(parseFloat(value))) value = "0"
         setSettlementAmount(parseFloat(value) ?? 0)
     }
     const handleSubmit = () => {
         handleSettlement(settlementAmount);
         handleSettlementClose()
     }
-    const payWithPayPal = async() => {
-        const res = await axiosInstance.post(`${API_URLS.createPayment}`, {
-            amount: settlementAmount,
-            id: payer.group_id,
-            payerId: payer.group_membership_id,
-            debtorId: debtor.group_membership_id,
-            type: "groups"
-        })
-        if(res.data.data) {
+    const payWithPayPal = async () => {
+        try {
+            const res = await axiosInstance.post(
+                `${API_URLS.createPayment}`,
+                {
+                    amount: settlementAmount,
+                    id: payer.group_id,
+                    payerId: payer.group_membership_id,
+                    debtorId: debtor.group_membership_id,
+                    type: "groups"
+                }
+            );
+
             window.location.href = res.data.data;
-          }
+        } catch (error) {
+            toast.error("Failed to create payment, please try again later");
+        }
     }
     return (
         <Modal open={open} onClose={() => handleSettlementClose()}>

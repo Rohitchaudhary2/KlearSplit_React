@@ -41,23 +41,34 @@ const ViewExpenses: React.FC<{
             setLoading(true);
             const fetchExpenses = async () => {
                 const params = { fetchAll: true, timestamp: new Date().toISOString() };
-                const res = await axiosInstance.get(`${API_URLS.fetchExpensesSettlements}/${group.group_id}`, { params, withCredentials: true })
-                if (res.data.success) {
-                    res.data.data.forEach((expense: GroupExpenseData | GroupSettlementData) => {
+                try {
+                    const res = await axiosInstance.get(
+                        `${API_URLS.fetchExpensesSettlements}/${group.group_id}`,
+                        { params, withCredentials: true }
+                    );
+
+                    const expensesWithDetails = res.data.data.map((expense: GroupExpenseData | GroupSettlementData) => {
                         if (expense.payer_id === currentMember?.group_membership_id) {
                             expense.payer = getFullNameAndImage(currentMember);
                         } else {
                             const payer = groupMembers!.find((member) => expense.payer_id === member.group_membership_id);
                             expense.payer = getFullNameAndImage(payer);
                         }
+
                         if ("group_settlement_id" in expense) {
                             const debtor = groupMembers!.find((member) => expense.debtor_id === member.group_membership_id);
                             expense.debtor = getFullNameAndImage(debtor);
                         }
+
+                        return expense;
                     });
-                    setExpenses(res.data.data);
+
+                    setExpenses(expensesWithDetails);
+                } catch (error) {
+                    toast.error("Failed to fetch expenses and settlements, please try again later");
+                } finally {
+                    setLoading(false);
                 }
-                setLoading(false);
             }
             fetchExpenses()
         }, [])
@@ -102,10 +113,21 @@ const ViewExpenses: React.FC<{
             setExpenseToBeUpdated(undefined);
         }
         const handleAddExpense = async (expense: FormData) => {
-            expense.append("group_expense_id", expenseToBeUpdated!.group_expense_id);
-            const res = await axiosInstance.patch(`${API_URLS.updateGroupExpense}/${group.group_id}`, expense, { withCredentials: true });
-            if (res.data.data) toast.success("Expense updated successfully!");
-            setExpenseToBeUpdated(undefined);
+            try {
+                expense.append("group_expense_id", expenseToBeUpdated!.group_expense_id);
+
+                const res = await axiosInstance.patch(
+                    `${API_URLS.updateGroupExpense}/${group.group_id}`,
+                    expense,
+                    { withCredentials: true }
+                );
+
+                toast.success("Expense updated successfully!");
+            } catch (error) {
+                toast.error("Failed to update expense, please try again later");
+            } finally {
+                setExpenseToBeUpdated(undefined); // Clears the expense to be updated in either case (success or error)
+            }
         }
         const onUpdateExpense = (expense: GroupExpenseData) => {
             setExpenseToBeUpdated(expense);
@@ -114,13 +136,19 @@ const ViewExpenses: React.FC<{
             const isExpense = "group_expense_id" in expense;
             const url = isExpense ? API_URLS.deleteGroupExpense : API_URLS.deleteGroupSettlement;
             const data = isExpense ? { group_expense_id: expense.group_expense_id } : { group_settlement_expense_id: expense.group_settlement_id };
-            const res = await axiosInstance.delete(`${url}/${group.group_id}`, 
-                {
-                    data,
-                    withCredentials: true
-                }
-            )
-            if(res.data.success) toast.success("Expense deleted successfully!")
+            try {
+                const res = await axiosInstance.delete(
+                    `${url}/${group.group_id}`,
+                    {
+                        data,
+                        withCredentials: true
+                    }
+                );
+
+                toast.success("Expense deleted successfully!");
+            } catch (error) {
+                toast.error("Failed to delete expense, please try again later");
+            }
         }
         return (
             <>
