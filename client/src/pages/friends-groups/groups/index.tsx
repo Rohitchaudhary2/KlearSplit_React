@@ -13,7 +13,7 @@ import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
 import { Check, Clear } from "@mui/icons-material";
 import { toast } from "sonner";
-import { Expense, ExpenseParticipant, GroupData, GroupExpenseData, GroupExpenseResponse, GroupMemberData, GroupMessageData, GroupSettlementData } from "./index.model";
+import { AddMemberResponse, ExpenseParticipant, GroupData, GroupExpenseData, GroupExpenseResponse, GroupMemberData, GroupMessageData, GroupSettlementData } from "./index.model";
 import { useSocket } from "../shared/search-bar/socket";
 import { format } from "date-fns";
 import classes from './index.module.css'
@@ -659,6 +659,10 @@ const GroupsPage = () => {
 
   const handleCreateGroup = (group: GroupData) => setGroups((prev) => [...prev, group])
 
+  const handleAddMembers = (members: AddMemberResponse["data"]) => {
+    setGroupMembers((prev) => [...(prev ?? []), ...members.addedMembers]);
+  }
+
   return (
     <>
       {
@@ -741,6 +745,7 @@ const GroupsPage = () => {
                     :
                     <>
                       <Box><Header
+                      handleAddGroupMembers={handleAddMembers}
                         handleLeaveGroup={handleLeaveGroup}
                         handleUpdateExpense={handleUpdateExpense}
                         handleDeleteExpense={handleDeleteExpense}
@@ -848,7 +853,7 @@ const GroupsPage = () => {
                         }
                       </Box>
                       <Divider />
-                      <Box><MessageInput loader={loaders.addExpense} handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
+                      <Box><MessageInput isBlocked={selectedGroup.has_blocked} loader={loaders.addExpense} handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
                     </>
                   :
                   <Box className="flex flex-col justify-center items-center h-full">

@@ -140,6 +140,7 @@ export interface GroupData {
   status: string;
   role: string;
   has_blocked: boolean;
+  has_archived: boolean;
 }
 
 export interface Groups {
@@ -307,4 +308,13 @@ export interface ExpenseDeletedEvent {
   id: string;
   payerId: string;
   debtorAmount: string;
+}
+
+export interface AddMemberResponse {
+  success: string;
+  message: string;
+  data: {
+    addedMembers: GroupMemberData[];
+    notAddedMembers: GroupMemberData[];
+  };
 }

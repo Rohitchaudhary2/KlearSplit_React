@@ -13,16 +13,19 @@ import {
 } from "@mui/material";
 import { useCallback, useState } from "react";
 import debounce from "../../../utils/debounce";
-import { SelectableUser, SearchedUser } from "./index.model";
+import { SelectableUser, SearchedUser, AddMemberResponse } from "./index.model";
 import { Close } from "@mui/icons-material";
 import { API_URLS } from "../../../constants/apiUrls";
 import axiosInstance from "../../../utils/axiosInterceptor";
+import { toast } from "sonner";
 
 interface Props {
   open: boolean;
   handleClose: () => void;
-  selectedMembers: SelectableUser[];
-  onSave: (members: SelectableUser[]) => void;
+  selectedMembers?: SelectableUser[];
+  onSave?: (members: SelectableUser[]) => void;
+  groupId?: string;
+  handleAddMembers?: (members: AddMemberResponse["data"]) => void
 }
 
 const SelectMembersDialog: React.FC<Props> = ({
@@ -30,11 +33,13 @@ const SelectMembersDialog: React.FC<Props> = ({
   handleClose,
   selectedMembers,
   onSave,
+  groupId,
+  handleAddMembers
 }) => {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchedUser[]>([]);
-  const [members, setMembers] = useState<SelectableUser[]>(selectedMembers);
+  const [members, setMembers] = useState<SelectableUser[]>(selectedMembers ?? []);
 
   const debouncedSearch = useCallback(
     debounce(async (q: string) => {
@@ -79,8 +84,38 @@ const SelectMembersDialog: React.FC<Props> = ({
     setMembers(members.filter((m) => m.email !== email));
   };
 
-  const handleSave = () => {
-    onSave(members);
+  const handleMembersData = () => {
+    const membersList = members.map((user) => user.user_id);
+    const admins = members
+      .filter((user) => user.role === "admin")
+      .map((user) => user.user_id);
+    const coadmins = members
+      .filter((user) => user.role === "coadmin")
+      .map((user) => user.user_id);
+
+    const membersData = {
+      members: membersList,
+      ...(admins.length > 0 && { admins }),
+      ...(coadmins.length > 0 && { coadmins }),
+    };
+
+    return membersData;
+  };
+
+  const handleSave = async() => {
+    if(groupId) {
+      const membersData = handleMembersData();
+        const addedMembers = await axiosInstance.post(
+          API_URLS.addGroupMembers,
+          { membersData, group_id: groupId },
+          {withCredentials: true}
+        );
+        handleAddMembers!(addedMembers.data.data);
+        handleClose();
+        toast.success("Members added successfully to the group!");
+      return;
+    }
+    onSave!(members);
     setMembers([]);
     setQuery("");
     setSearchResults([]);

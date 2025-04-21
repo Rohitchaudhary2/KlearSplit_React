@@ -607,7 +607,7 @@ const Friendspage = () => {
                       }
                     </Box>
                     <Divider />
-                    <Box><MessageInput loader={loaders.addExpense} handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
+                    <Box><MessageInput isBlocked={selectedFriend.block_status === "BOTH" || (selectedFriend.block_status === "FRIEND1" && selectedFriend.status === "SENDER") || (selectedFriend.block_status === "FRIEND2" && selectedFriend.status === "RECEIVER")} loader={loaders.addExpense} handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
                   </>
                   :
                   <Box className="flex flex-col justify-center items-center h-full">

@@ -37,6 +37,10 @@ const Header: React.FC<{ friend: Friend, handleUpdateExpense: (expense: Expense)
   }
   const archive = async () => {
     try {
+      if(+friend.balance_amount !== 0) {
+        toast.warning("Settle up before this action")
+        return;
+      }
       await axiosInstance.patch(
         `${API_URLS.archiveBlockRequest}/${friend.conversation_id}`,
         { type: "archived" },
@@ -51,6 +55,10 @@ const Header: React.FC<{ friend: Friend, handleUpdateExpense: (expense: Expense)
   }
   const block = async () => {
     try {
+      if(+friend.balance_amount !== 0) {
+        toast.warning("Settle up before this action")
+        return;
+      }
       await axiosInstance.patch(
         `${API_URLS.archiveBlockRequest}/${friend.conversation_id}`,
         { type: "blocked" },
