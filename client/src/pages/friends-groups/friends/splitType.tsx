@@ -184,7 +184,7 @@ const SplitType: React.FC<{
                                                 <ListItemText
                                                     primary={
                                                         <Box className="flex justify-between">
-                                                            <Box>{participant.first_name} {participant.last_name}</Box>
+                                                            <Box>{participant.first_name} {participant.last_name ?? ''}</Box>
                                                         </Box>
                                                     }
                                                     secondary={

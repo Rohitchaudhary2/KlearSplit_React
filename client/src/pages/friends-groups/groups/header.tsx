@@ -2,12 +2,16 @@ import { ArrowBack, MoreVert } from "@mui/icons-material"
 import { Avatar, Box, FormControl, IconButton, ListItemAvatar, Menu, MenuItem, Select, SelectChangeEvent, Typography } from "@mui/material"
 import { useState } from "react";
 import ViewExpenses from "./viewExpenses";
-import { GroupData, GroupMemberData } from "./index.model";
+import { GroupData, GroupExpenseData, GroupExpenseResponse, GroupMemberData } from "./index.model";
 import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
 
-const Header: React.FC<{ group: GroupData, currentMember: GroupMemberData, groupMembers: GroupMemberData[], handleGroupDetailsOpen: () => void, handleBackButton: () => void, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, view: string }> = ({ group, currentMember, groupMembers, handleGroupDetailsOpen, handleBackButton, handleViewChange, view }) => {
+const Header: React.FC<{ 
+  handleUpdateExpense: (expenseData: GroupExpenseResponse["data"], previousExpenseData: GroupExpenseData) => void,
+  handleDeleteExpense: (expenseData: GroupExpenseData) => void,
+  group: GroupData, currentMember: GroupMemberData, groupMembers: GroupMemberData[], handleGroupDetailsOpen: () => void, handleBackButton: () => void, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, view: string }> = ({ 
+    handleUpdateExpense, handleDeleteExpense, group, currentMember, groupMembers, handleGroupDetailsOpen, handleBackButton, handleViewChange, view }) => {
   const [blockStatus, setBlockStatus] = useState(group.has_blocked ? "Unblock" : "Block");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -46,12 +50,12 @@ const Header: React.FC<{ group: GroupData, currentMember: GroupMemberData, group
       <Box className="flex justify-between p-2 content-center">
         {
           viewExpensesOpen &&
-          <ViewExpenses currentMember={currentMember} groupMembers={groupMembers} group={group} open={viewExpensesOpen} handleViewExpensesClose={handleViewExpensesClose} />
+          <ViewExpenses handleUpdateExpense={handleUpdateExpense} handleDeleteExpense={handleDeleteExpense} currentMember={currentMember} groupMembers={groupMembers} group={group} open={viewExpensesOpen} handleViewExpensesClose={handleViewExpensesClose} />
         }
         <Box className="flex justify-between gap-2 items-center">
           <ArrowBack className="cursor-pointer" onClick={handleBackButton} />
           <ListItemAvatar sx={{ minWidth: 32 }}>
-            <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 32, height: 32 }} />
+            <Avatar alt="Avatar" src={group.image_url ?? "assets/image.png"} sx={{ width: 40, height: 40 }} />
           </ListItemAvatar>
           <Typography className="cursor-pointer" onClick={handleGroupDetailsOpen} variant="h6" textAlign="center">{group.group_name}</Typography>
         </Box>

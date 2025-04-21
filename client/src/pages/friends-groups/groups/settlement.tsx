@@ -1,6 +1,6 @@
 import { ModalDialog } from "@mui/joy"
 import { Modal, DialogTitle, Box, Typography, Avatar, TextField } from "@mui/material"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Button from '@mui/joy/Button';
 import classes from './index.module.css';
 import { RootState } from "../../../store";
@@ -20,15 +20,24 @@ const Settlement: React.FC<{
 }> = ({ open, handleSettlementClose, handleSettlement, settlement_amount, payer, debtor }) => {
     const user = useSelector((store: RootState) => store.auth.user)
     const [settlementAmount, setSettlementAmount] = useState(settlement_amount);
+    useEffect(() => {
+        setSettlementAmount(settlement_amount);
+    }, [settlement_amount])
+    const [loader, setLoader] = useState(false);
+    const [error, setError] = useState("");
     const onChange = (value: string) => {
         if (isNaN(parseFloat(value))) value = "0"
         setSettlementAmount(parseFloat(value) ?? 0)
+        if (parseFloat(value) < 0.1 || parseFloat(value) > settlement_amount) {
+            setError(`Amount must be between 0.1 and ${settlement_amount}.`)
+        } else setError("")
     }
     const handleSubmit = () => {
         handleSettlement(settlementAmount);
         handleSettlementClose()
     }
     const payWithPayPal = async () => {
+        setLoader(true);
         try {
             const res = await axiosInstance.post(
                 `${API_URLS.createPayment}`,
@@ -43,6 +52,7 @@ const Settlement: React.FC<{
 
             window.location.href = res.data.data;
         } catch (error) {
+            setLoader(false);
             toast.error("Failed to create payment, please try again later");
         }
     }
@@ -54,7 +64,6 @@ const Settlement: React.FC<{
                     backgroundColor: "white",
                     position: "fixed",
                     top: "10",
-                    // minHeight: "50%",
                     minWidth: "30%",
                     padding: 0,
                     border: "none",
@@ -65,15 +74,16 @@ const Settlement: React.FC<{
             >
                 <DialogTitle className="bg-[#3674B5] text-center text-white" sx={{ borderRadius: "7px 7px 0px 0px" }}>Settle up</DialogTitle>
                 <Box className="w-full self-start rounded p-3 flex flex-col gap-3">
-                    <Box className="flex justify-between gap-3 px-6 items-center">
-                        <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 60, height: 60 }} />
+                    <Box className="flex justify-between gap-3 px-2 items-center">
+                        <Box className="flex flex-col justify-center items-center gap-2 w-[10vw]">
+                            <Avatar alt="avatar" src={payer.image_url ?? "assets/image.png"} sx={{ width: 60, height: 60 }} />
+                            <Typography>{payer.first_name} {payer.last_name ?? ''}</Typography>
+                        </Box>
                         <span className={classes.arrow}></span>
-                        <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 60, height: 60 }} />
-                    </Box>
-                    <Box className="flex justify-between gap-3 items-center">
-                        <Typography className="grow">{payer.first_name} {payer.last_name}</Typography>
-                        <Typography>paid</Typography>
-                        <Typography className="grow text-end">{debtor.first_name} {debtor.last_name}</Typography>
+                        <Box className="flex flex-col justify-center items-center gap-2 w-[10vw]">
+                            <Avatar alt="avatar" src={debtor.image_url ?? "assets/image.png"} sx={{ width: 60, height: 60 }} />
+                            <Typography>{debtor.first_name} {debtor.last_name ?? ''}</Typography>
+                        </Box>
                     </Box>
                     <TextField
                         label="Total Amount"
@@ -83,12 +93,12 @@ const Settlement: React.FC<{
                         value={settlementAmount}
                         onChange={(e) => onChange(e.target.value.trim())}
                         fullWidth
-                    // error={!!errors.total_amount}
-                    // helperText={errors.total_amount}
+                        error={!!error}
+                        helperText={error}
                     />
                     <Box className="flex flex-col gap-3">
-                        <Button variant="outlined" onClick={handleSubmit}>Record as cash Payment</Button>
-                        <Button variant="outlined" onClick={payWithPayPal}>Pay using Paypal</Button>
+                        <Button variant="outlined" disabled={!!error || loader} onClick={handleSubmit}>Record as cash Payment</Button>
+                        <Button variant="outlined" onClick={payWithPayPal} disabled={payer.member_id !== user?.user_id || !!error || loader}>Pay using Paypal</Button>
                     </Box>
                     <Box className="flex justify-end items-center p-3">
                         <Button onClick={handleSettlementClose}>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Expense } from "./index.model";
 import { format } from "date-fns";
+import { ListItemAvatar, Avatar } from "@mui/material";
 
 const ExpenseItem: React.FC<{
   expense: Expense;
@@ -17,12 +18,16 @@ const ExpenseItem: React.FC<{
     <li className={`flex mb-1 px-2 ${isCurrentUserPayer ? "justify-end" : "justify-start"}`}>
       {/* Avatar for other user */}
       {!isCurrentUserPayer && (
-        <img
-          src={imageUrl || "/profile.png"}
-          alt="avatar"
-          className="rounded-full inline-flex self-end mr-3 shadow-md"
-          width="32"
-        />
+        // <img
+        //   src={imageUrl || "/profile.png"}
+        //   alt="avatar"
+        //   className="rounded-full inline-flex self-end mr-3 shadow-md"
+        //   width="40"
+        //   height="40"
+        // />
+        <ListItemAvatar className="rounded-full inline-flex self-end mr-3 shadow-md" sx={{ minWidth: 32 }}>
+            <Avatar alt="Avatar" src={imageUrl ?? `assets/image.png`} sx={{ width: 40, height: 40 }} />
+          </ListItemAvatar>
       )}
 
       {/* Expense Card */}
@@ -74,12 +79,16 @@ const ExpenseItem: React.FC<{
 
       {/* Avatar for current user */}
       {isCurrentUserPayer && (
-        <img
-          src={currentUserImageUrl || "/profile.png"}
-          alt="avatar"
-          className="rounded-full inline-flex self-end ml-3 shadow-md"
-          width="32"
-        />
+        // <img
+        //   src={currentUserImageUrl || "/profile.png"}
+        //   alt="avatar"
+        //   className="rounded-full inline-flex self-end ml-3 shadow-md"
+        //   width="40"
+        //   height="40"
+        // />
+        <ListItemAvatar className="rounded-full inline-flex self-end ml-3 shadow-md" sx={{ minWidth: 32 }}>
+            <Avatar alt="Avatar" src={currentUserImageUrl ?? `assets/image.png`} sx={{ width: 40, height: 40 }} />
+          </ListItemAvatar>
       )}
     </li>
   );

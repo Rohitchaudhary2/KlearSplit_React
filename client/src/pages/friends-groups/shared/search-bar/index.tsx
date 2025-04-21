@@ -3,9 +3,9 @@ import { Paper } from "@mui/material";
 import React, { useState } from "react";
 import AddFriend from "../../friends/addFriend";
 import CreateGroup from "../../groups/createGroup";
-import { Friend } from "../../groups/index.model";
+import { Friend, GroupData } from "../../groups/index.model";
 
-const SearchBar: React.FC<{ placeholder: string; handleAddFriendRequests?: (requests: Friend[]) => void }> = ({ placeholder, handleAddFriendRequests }) => {
+const SearchBar: React.FC<{ placeholder: string; handleCreateGroup?: (group: GroupData) => void, handleAddFriendRequests?: (requests: Friend[]) => void }> = ({ placeholder, handleCreateGroup, handleAddFriendRequests }) => {
   const [addFriendOpen, setAddFriendOpen] = useState(false);
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
 
@@ -18,7 +18,7 @@ const SearchBar: React.FC<{ placeholder: string; handleAddFriendRequests?: (requ
             addFriendOpen &&
             <AddFriend handleAddFriendRequests={handleAddFriendRequests!} open={addFriendOpen} handleAddFriendClose={handleAddFriendClose}/>
         }
-        <CreateGroup open={createGroupOpen} handleClose={handleCreateGroupClose}/>
+        <CreateGroup open={createGroupOpen} handleCreateGroup={handleCreateGroup!} handleClose={handleCreateGroupClose}/>
             <div className="flex justify-between items-center gap-3">
                 <Paper elevation={5}>
                 <div className="flex justify-between items-center shadow px-3 py-2 bg-white rounded-lg">

@@ -342,7 +342,7 @@ const Friendspage = () => {
   const handleBulkAddExpenses = (expenses: Expense[]) => {
     let balanceAmount = parseFloat(selectedFriend!.balance_amount);
     expenses.forEach((expense) => {
-      expense.payer = expense.payer_id === user?.user_id ? "You" : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}`
+      expense.payer = expense.payer_id === user?.user_id ? "You" : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name ?? ''}`
       balanceAmount += (user?.user_id === expense.payer_id ? parseFloat(expense.debtor_amount) : -parseFloat(expense.debtor_amount))
     })
     setCombined((prev) => [...prev, ...expenses]);
@@ -362,7 +362,7 @@ const Friendspage = () => {
         ...res.data.data,
         payer: res.data.data.payer_id === user?.user_id
           ? "You"
-          : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}`
+          : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name ?? ''}`
       };
 
       setCombined((prev) => [...prev, expense]);
@@ -395,7 +395,7 @@ const Friendspage = () => {
         ...res.data.data,
         payer: res.data.data.payer_id === user?.user_id
           ? "You"
-          : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name}`
+          : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name ?? ''}`
       };
 
       setCombined((prev) => [...prev, settlement]);
@@ -422,8 +422,8 @@ const Friendspage = () => {
   const handleUpdateExpense = (expenseData: Expense) => {
     const balanceAmount = parseFloat(selectedFriend!.balance_amount) + (
       expenseData.payer_id === user?.user_id ?
-      parseFloat(expenseData.debtor_amount) : 
-      -parseFloat(expenseData.debtor_amount)
+        parseFloat(expenseData.debtor_amount) :
+        -parseFloat(expenseData.debtor_amount)
     )
     selectedFriend!.balance_amount = JSON.stringify(balanceAmount);
     const updatedExpenses = expenses.map((expense) => {
@@ -444,8 +444,8 @@ const Friendspage = () => {
   const handleDeleteExpense = (expenseData: Expense) => {
     const balanceAmount = parseFloat(selectedFriend!.balance_amount) + (
       expenseData.payer_id === user?.user_id ?
-      -parseFloat(expenseData.debtor_amount) : 
-      parseFloat(expenseData.debtor_amount)
+        -parseFloat(expenseData.debtor_amount) :
+        parseFloat(expenseData.debtor_amount)
     )
     selectedFriend!.balance_amount = JSON.stringify(balanceAmount);
     const updatedExpenses = expenses.filter((expense) => expense.friend_expense_id !== expenseData.friend_expense_id)
@@ -456,7 +456,7 @@ const Friendspage = () => {
       }
       return true;
     })
-    setCombined(updatedCombined); 
+    setCombined(updatedCombined);
   }
   return (
     <>
@@ -505,7 +505,7 @@ const Friendspage = () => {
                             <ListItemText
                               primary={
                                 <Box className="flex justify-between">
-                                  <Box>{friend.friend.first_name} {friend.friend.last_name}</Box>
+                                  <Box>{friend.friend.first_name} {friend.friend.last_name ?? ''}</Box>
                                   <Box className="flex gap-2" sx={{ color: parseFloat(friend.balance_amount) < 0 ? 'red' : 'green' }}>₹{Math.abs(parseFloat(friend.balance_amount))} {(activeButton === "friendRequests" && friend.status === "RECEIVER") ? <>
                                     <button onClick={() => handleAcceptRejectRequest(friend.conversation_id, "ACCEPTED")}><Check /></button>
                                     <button onClick={() => handleAcceptRejectRequest(friend.conversation_id, "REJECTED")}><Clear /></button>
@@ -554,8 +554,8 @@ const Friendspage = () => {
                               message={{ text: message.message, createdAt: format(new Date(message.createdAt), "hh:mm a") }}
                               isCurrentUser={message.sender_id === user?.user_id}
                               name={selectedFriend.friend.first_name}
-                              imageUrl="/vite.svg"
-                              currentUserImageUrl="/vite.svg"
+                              imageUrl={selectedFriend.friend.image_url ?? "assets/image.png"}
+                              currentUserImageUrl={user.image_url ?? "assets/image.png"}
                             />
                           )) : null
                       }
@@ -566,8 +566,8 @@ const Friendspage = () => {
                               key={expense.friend_expense_id}
                               expense={expense}
                               isCurrentUserPayer={expense.payer_id === user?.user_id}
-                              imageUrl="vite.svg"
-                              currentUserImageUrl="vite.svg"
+                              imageUrl={selectedFriend.friend.image_url ?? "assets/image.png"}
+                              currentUserImageUrl={user.image_url ?? "assets/image.png"}
                               name={expense.payer}
                             // onRetryExpenseAddition={handleRetry}
                             />
@@ -582,8 +582,8 @@ const Friendspage = () => {
                                   key={item.friend_expense_id}
                                   expense={item}
                                   isCurrentUserPayer={item.payer_id === user?.user_id}
-                                  imageUrl="vite.svg"
-                                  currentUserImageUrl="vite.svg"
+                                  imageUrl={selectedFriend.friend.image_url ?? "assets/image.png"}
+                                  currentUserImageUrl={user.image_url ?? "assets/image.png"}
                                   name={item.payer}
                                 // onRetryExpenseAddition={handleRetry}
                                 />
@@ -596,8 +596,8 @@ const Friendspage = () => {
                                   message={{ text: item.message, createdAt: format(new Date(item.createdAt), "hh:mm a") }}
                                   isCurrentUser={item.sender_id === user?.user_id}
                                   name={selectedFriend.friend.first_name}
-                                  imageUrl="/vite.svg"
-                                  currentUserImageUrl="/vite.svg"
+                                  imageUrl={selectedFriend.friend.image_url ?? "assets/image.png"}
+                                  currentUserImageUrl={user.image_url ?? "assets/image.png"}
                                 />
                               )
                             }
@@ -610,8 +610,10 @@ const Friendspage = () => {
                     <Box><MessageInput loader={loaders.addExpense} handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
                   </>
                   :
-                  <Box className="flex flex-col justify-center content-center items-center h-100">
-                    <Typography align="center">Select a friend to have chat with or to add expense</Typography>
+                  <Box className="flex flex-col justify-center items-center h-full">
+                    <Typography variant="h4" className="text-[#3674B5] text-center">
+                      Select a friend to chat with or add an expense
+                    </Typography>
                   </Box>
               }
             </Stack>

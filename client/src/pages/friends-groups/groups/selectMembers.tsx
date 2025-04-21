@@ -142,7 +142,7 @@ const SelectMembersDialog: React.FC<Props> = ({
                       className="p-2 hover:bg-gray-200 cursor-pointer rounded"
                       onClick={() => handleSelectUser(user)}
                     >
-                      {user.first_name} {user.last_name} ({user.email})
+                      {user.first_name} {user.last_name ?? ''} ({user.email})
                     </div>
                   ))
                 ) : (
@@ -161,7 +161,7 @@ const SelectMembersDialog: React.FC<Props> = ({
                   >
                     <div className="flex-1">
                       <div>
-                        {user.first_name} {user.last_name}
+                        {user.first_name} {user.last_name ?? ''}
                       </div>
                       <div className="text-gray-600 text-sm">
                         ({user.email})

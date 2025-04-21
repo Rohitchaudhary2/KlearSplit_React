@@ -6,22 +6,24 @@ import autoTable from "jspdf-autotable";
 import { useEffect, useState } from "react";
 import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
-import { GroupData, GroupExpenseData, GroupMemberData, GroupSettlementData } from "./index.model";
+import { GroupData, GroupExpenseData, GroupExpenseResponse, GroupMemberData, GroupSettlementData } from "./index.model";
 import { format } from "date-fns";
 import AddExpense from "./addExpense";
 import { toast } from "sonner";
 
 const ViewExpenses: React.FC<{
+    handleUpdateExpense: (expenseData: GroupExpenseResponse["data"], previousExpenseData: GroupExpenseData) => void,
+    handleDeleteExpense: (expenseData: GroupExpenseData) => void,
     currentMember: GroupMemberData,
     groupMembers: GroupMemberData[],
     open: boolean,
     group: GroupData
     handleViewExpensesClose: () => void
-}> = ({ open, group, currentMember, groupMembers,
+}> = ({ open, group, currentMember, groupMembers, handleUpdateExpense, handleDeleteExpense,
     handleViewExpensesClose
 }) => {
         const [loading, setLoading] = useState(false);
-        const [expenses, setExpenses] = useState<GroupExpenseData[]>([]);
+        const [expenses, setExpenses] = useState<(GroupExpenseData | GroupSettlementData)[]>([]);
         const [expenseToBeUpdated, setExpenseToBeUpdated] = useState<GroupExpenseData>();
         const [updateExpenseOpen, setUpdateExpenseOpen] = useState(false);
         const getFullNameAndImage = (user: GroupMemberData | undefined) => {
@@ -87,15 +89,26 @@ const ViewExpenses: React.FC<{
             ];
 
             // Map through the totalExpenses and transform the data into a format compatible with the table
-            const extractedExpense = expenses.map((expense) => ({
-                date: format(new Date(expense.createdAt), 'dd MMM, yyyy'),
-                name: expense.expense_name,
-                amount: expense.total_amount,
-                payer: expense.payer.fullName,
-                splitType: expense.split_type,
-                debtAmount: expense.total_debt_amount,
-                description: expense.description ?? "-",
-            }));
+            const extractedExpense = expenses.map((expense) => {
+                if ("group_expense_id" in expense) return {
+                    date: format(new Date(expense.createdAt), 'dd MMM, yyyy'),
+                    name: expense.expense_name,
+                    amount: expense.total_amount,
+                    payer: expense.payer.fullName,
+                    splitType: expense.split_type,
+                    debtAmount: expense.total_debt_amount,
+                    description: expense.description ?? "-",
+                }
+                return {
+                    date: format(new Date(expense.createdAt), 'dd MMM, yyyy'),
+                    name: "SETTLEMENT",
+                    amount: expense.settlement_amount,
+                    payer: expense.payer.fullName,
+                    splitType: "SETTLEMENT",
+                    debtAmount: expense.settlement_amount,
+                    description: expense.description ?? "-",
+                }
+            });
 
             // Convert the array of objects (expenses) into array of arrays for the autoTable body
             const body = extractedExpense.map((expense) => Object.values(expense));
@@ -116,11 +129,32 @@ const ViewExpenses: React.FC<{
             try {
                 expense.append("group_expense_id", expenseToBeUpdated!.group_expense_id);
 
-                const res = await axiosInstance.patch(
+                const res = await axiosInstance.patch<GroupExpenseResponse>(
                     `${API_URLS.updateGroupExpense}/${group.group_id}`,
                     expense,
                     { withCredentials: true }
                 );
+                handleUpdateExpense(res.data.data, expenseToBeUpdated!);
+                const debtorAmount = res.data.data.expenseParticipants.reduce((acc: number, val) => {
+                    return acc += +val.debtor_amount;
+                  }, 0)
+                  
+                  Object.assign(res.data.data.expense, {"total_debt_amount": debtorAmount});
+                  if (res.data.data.expense.payer_id === currentMember?.group_membership_id) {
+                    res.data.data.expense.payer = getFullNameAndImage(currentMember);
+                  } else {
+                    const payer = groupMembers!.find(
+                      (member) => res.data.data.expense.payer_id === member.group_membership_id
+                    );
+                    res.data.data.expense.payer = getFullNameAndImage(payer);
+                  }
+                const updatedExpenses = expenses.map((expense) => {
+                    if("group_expense_id" in expense) {
+                        return expense.group_expense_id === res.data.data.expense.group_expense_id ? res.data.data.expense : expense;
+                    }
+                    return expense;
+                })
+                setExpenses(updatedExpenses);
 
                 toast.success("Expense updated successfully!");
             } catch (error) {
@@ -132,18 +166,26 @@ const ViewExpenses: React.FC<{
         const onUpdateExpense = (expense: GroupExpenseData) => {
             setExpenseToBeUpdated(expense);
         }
-        const handleDeleteExpense = async (expense: GroupExpenseData | GroupSettlementData) => {
-            const isExpense = "group_expense_id" in expense;
-            const url = isExpense ? API_URLS.deleteGroupExpense : API_URLS.deleteGroupSettlement;
-            const data = isExpense ? { group_expense_id: expense.group_expense_id } : { group_settlement_expense_id: expense.group_settlement_id };
+        const onDeleteExpense = async (expenseData: GroupExpenseData) => {
+            // const isExpense = "group_expense_id" in expense;
+            // const url = isExpense ? API_URLS.deleteGroupExpense : API_URLS.deleteGroupSettlement;
+            // const data = isExpense ? { group_expense_id: expense.group_expense_id } : { group_settlement_expense_id: expense.group_settlement_id };
             try {
-                const res = await axiosInstance.delete(
-                    `${url}/${group.group_id}`,
+                await axiosInstance.delete(
+                    `${API_URLS.deleteGroupExpense}/${group.group_id}`,
                     {
-                        data,
+                        data: { group_expense_id: expenseData.group_expense_id },
                         withCredentials: true
                     }
                 );
+                handleDeleteExpense(expenseData)
+                const updatedExpenses = expenses.filter((expense) => {
+                    if("group_expense_id" in expense) {
+                        return expense.group_expense_id !== expenseData.group_expense_id;
+                    }
+                    return true;
+                })
+                setExpenses(updatedExpenses);
 
                 toast.success("Expense deleted successfully!");
             } catch (error) {
@@ -199,74 +241,142 @@ const ViewExpenses: React.FC<{
                                     !loading ?
                                         <tbody className="border-y">
                                             {
-                                                expenses.map((expense) => (
-                                                    <tr key={expense.group_expense_id} className="text-center text-sm">
-                                                        <td className="px-2 py-1">{format(new Date(expense.createdAt), 'dd MMM, yyyy')}</td>
+                                                expenses.map((expense) => {
+                                                    if ("group_expense_id" in expense) {
+                                                        return (
+                                                            <tr key={expense.group_expense_id} className="text-center text-sm">
+                                                                <td className="px-2 py-1">{format(new Date(expense.createdAt), 'dd MMM, yyyy')}</td>
 
-                                                        {/* Expense Name */}
-                                                        <td className="px-2 py-1 max-w-[13vw] break-words">
-                                                            {expense.expense_name}
-                                                        </td>
+                                                                {/* Expense Name */}
+                                                                <td className="px-2 py-1 max-w-[13vw] break-words">
+                                                                    {expense.expense_name}
+                                                                </td>
 
-                                                        {/* Total Amount */}
-                                                        <td className="px-2 py-1">
-                                                            {expense.total_amount}
-                                                        </td>
+                                                                {/* Total Amount */}
+                                                                <td className="px-2 py-1">
+                                                                    {expense.total_amount}
+                                                                </td>
 
-                                                        {/* Payer Name */}
-                                                        <td className="px-2 py-1">
-                                                            {expense.payer.fullName}
-                                                        </td>
+                                                                {/* Payer Name */}
+                                                                <td className="px-2 py-1">
+                                                                    {expense.payer.fullName}
+                                                                </td>
 
-                                                        {/* Split Type */}
-                                                        <td className="px-2 py-1">
-                                                            {expense.split_type}
-                                                        </td>
+                                                                {/* Split Type */}
+                                                                <td className="px-2 py-1">
+                                                                    {expense.split_type}
+                                                                </td>
 
-                                                        {/* Debt Amount */}
-                                                        <td className="px-2 py-1">
-                                                            {expense.total_debt_amount}
-                                                        </td>
+                                                                {/* Debt Amount */}
+                                                                <td className="px-2 py-1">
+                                                                    {expense.total_debt_amount}
+                                                                </td>
 
-                                                        {/* Description */}
-                                                        <td className="px-2 py-1">
-                                                            {expense.description ?? "-"}
-                                                        </td>
+                                                                {/* Description */}
+                                                                <td className="px-2 py-1">
+                                                                    {expense.description ?? "-"}
+                                                                </td>
 
-                                                        {/* Actions */}
-                                                        <td className="px-2 py-1 flex justify-center items-center space-x-2">
-                                                            {/* Update Icon */}
-                                                            <button
-                                                                onClick={() => onUpdateExpense(expense)}
-                                                                onKeyUp={(e) => e.key === 'Enter' && onUpdateExpense(expense)}
-                                                                className="hover:text-blue-500 cursor-pointer"
-                                                                aria-label="Update"
-                                                            >
-                                                                {/* {isUpdateLoading(expense) ? (
+                                                                {/* Actions */}
+                                                                <td className="px-2 py-1 flex justify-center items-center space-x-2">
+                                                                    {/* Update Icon */}
+                                                                    <button
+                                                                        onClick={() => onUpdateExpense(expense)}
+                                                                        onKeyUp={(e) => e.key === 'Enter' && onUpdateExpense(expense)}
+                                                                        className="hover:text-blue-500 cursor-pointer"
+                                                                        aria-label="Update"
+                                                                    >
+                                                                        {/* {isUpdateLoading(expense) ? (
                                                                     <div className="spinner-border spinner-border-sm text-blue-500" role="status">
                                                                         <span className="visually-hidden">Loading...</span>
                                                                     </div>
                                                                 ) : 'Edit'} */}
-                                                                <Edit />
-                                                            </button>
+                                                                        <Edit />
+                                                                    </button>
 
-                                                            {/* Delete Icon */}
-                                                            <button
-                                                                onClick={() => handleDeleteExpense(expense)}
-                                                                onKeyUp={(e) => e.key === 'Enter' && handleDeleteExpense(expense)}
-                                                                className="hover:text-red-500 cursor-pointer"
-                                                                aria-label="Delete"
-                                                            >
-                                                                {/* {isDeleteLoading(expense) ? (
+                                                                    {/* Delete Icon */}
+                                                                    <button
+                                                                        onClick={() => onDeleteExpense(expense)}
+                                                                        onKeyUp={(e) => e.key === 'Enter' && onDeleteExpense(expense)}
+                                                                        className="hover:text-red-500 cursor-pointer"
+                                                                        aria-label="Delete"
+                                                                    >
+                                                                        {/* {isDeleteLoading(expense) ? (
                                                                     <div className="spinner-border spinner-border-sm text-blue-500" role="status">
                                                                         <span className="visually-hidden">Loading...</span>
                                                                     </div>
                                                                 ) : 'Delete'} */}
-                                                                <Delete />
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))
+                                                                        <Delete />
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        )
+                                                    }
+                                                    return (
+                                                        <tr key={expense.group_settlement_id} className="text-center text-sm">
+                                                            <td className="px-2 py-1">{format(new Date(expense.createdAt), 'dd MMM, yyyy')}</td>
+
+                                                            {/* Expense Name */}
+                                                            <td className="px-2 py-1 max-w-[13vw] break-words">
+                                                                SETTLEMENT
+                                                            </td>
+
+                                                            {/* Total Amount */}
+                                                            <td className="px-2 py-1">
+                                                                {expense.settlement_amount}
+                                                            </td>
+
+                                                            {/* Payer Name */}
+                                                            <td className="px-2 py-1">
+                                                                {expense.payer.fullName}
+                                                            </td>
+
+                                                            {/* Split Type */}
+                                                            <td className="px-2 py-1">
+                                                                SETTLEMENT
+                                                            </td>
+
+                                                            {/* Debt Amount */}
+                                                            <td className="px-2 py-1">
+                                                                {expense.settlement_amount}
+                                                            </td>
+
+                                                            {/* Description */}
+                                                            <td className="px-2 py-1">
+                                                                {expense.description ?? "-"}
+                                                            </td>
+
+                                                            {/* Actions */}
+                                                            <td className="px-2 py-1 flex justify-center items-center space-x-2">
+                                                                {/* Update Icon */}
+                                                                <button
+                                                                    className="hover:text-blue-500 cursor-pointer"
+                                                                    aria-label="Update"
+                                                                >
+                                                                    {/* {isUpdateLoading(expense) ? (
+                                                                    <div className="spinner-border spinner-border-sm text-blue-500" role="status">
+                                                                        <span className="visually-hidden">Loading...</span>
+                                                                    </div>
+                                                                ) : 'Edit'} */}
+                                                                    <Edit />
+                                                                </button>
+
+                                                                {/* Delete Icon */}
+                                                                <button
+                                                                    className="hover:text-red-500 cursor-pointer"
+                                                                    aria-label="Delete"
+                                                                >
+                                                                    {/* {isDeleteLoading(expense) ? (
+                                                                    <div className="spinner-border spinner-border-sm text-blue-500" role="status">
+                                                                        <span className="visually-hidden">Loading...</span>
+                                                                    </div>
+                                                                ) : 'Delete'} */}
+                                                                    <Delete />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })
                                             }
                                         </tbody>
                                         :

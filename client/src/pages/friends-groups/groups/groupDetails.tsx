@@ -1,5 +1,5 @@
 import { Box, Button, Divider, Typography } from "@mui/material"
-import { GroupData, GroupMemberData } from "./index.model"
+import { GroupData, GroupMemberData, GroupSettlementData } from "./index.model"
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store";
 import Avatar from "@mui/joy/Avatar/Avatar";
@@ -12,13 +12,14 @@ import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
 
 interface GroupDetailsProps {
+    handleSettlement: (settlement: GroupSettlementData) => void
     handleGroupDetailsClose: () => void,
     group: GroupData,
     groupMembers: GroupMemberData[],
     currentMember: GroupMemberData,
 }
 
-const GroupDetails: React.FC<GroupDetailsProps> = ({ handleGroupDetailsClose, group, groupMembers, currentMember }) => {
+const GroupDetails: React.FC<GroupDetailsProps> = ({ handleSettlement, handleGroupDetailsClose, group, groupMembers, currentMember }) => {
     const user = useSelector((store: RootState) => store.auth.user);
     const [open, setOpen] = useState(false);
     const [groupData, setGroupData] = useState<GroupData>(group);
@@ -35,6 +36,12 @@ const GroupDetails: React.FC<GroupDetailsProps> = ({ handleGroupDetailsClose, gr
         setGroupData((prev) => ({ ...prev, ...updatedGroup }));
         setOpen(false);
     }
+    const getFullNameAndImage = (user: GroupMemberData | undefined) => {
+        return {
+            fullName: `${user?.first_name} ${user?.last_name ?? ""}`.trim(),
+            imageUrl: user?.image_url,
+        };
+    }
     const handleSettlementSubmit = async (settlementAmount: number) => {
         try {
             const res = await axiosInstance.post(
@@ -45,8 +52,25 @@ const GroupDetails: React.FC<GroupDetailsProps> = ({ handleGroupDetailsClose, gr
                     settlement_amount: settlementAmount
                 }
             );
+            const settlement = res.data.data;
 
-            console.log(res.data.data);
+            if (settlement.payer_id === currentMember?.group_membership_id) {
+                settlement.payer = getFullNameAndImage(currentMember);
+            } else {
+                const payer = groupMembers!.find(
+                    (member) => settlement.payer_id === member.group_membership_id
+                );
+                settlement.payer = getFullNameAndImage(payer);
+            }
+
+            if ("group_settlement_id" in settlement) {
+                const debtor = groupMembers!.find(
+                    (member) => settlement.debtor_id === member.group_membership_id
+                );
+                settlement.debtor = getFullNameAndImage(debtor);
+            }
+            handleSettlement(settlement);
+            toast.success("Settlement added successfully")
         } catch (error) {
             toast.error("Failed to add group settlement, please try again later");
         }
@@ -125,7 +149,7 @@ const GroupDetails: React.FC<GroupDetailsProps> = ({ handleGroupDetailsClose, gr
                                         <td className="px-2 self-start py-1">
                                             <Box className="flex gap-2 content-center items-center">
                                                 <Avatar alt="Remy Sharp" src={member.image_url ?? "/static/images/avatar/1.jpg"} sx={{ width: 32, height: 32 }} />
-                                                {member.first_name} {member.last_name}
+                                                {member.first_name} {member.last_name ?? ''}
                                             </Box>
                                         </td>
 

@@ -78,7 +78,7 @@ const Header: React.FC<{ friend: Friend, handleUpdateExpense: (expense: Expense)
           <ListItemAvatar sx={{ minWidth: 32 }}>
             <Avatar alt="Avatar" src={friend.friend.image_url ?? `assets/image.png`} sx={{ width: 40, height: 40 }} />
           </ListItemAvatar>
-          <Typography variant="h6" textAlign="center">{friend.friend.first_name} {friend.friend.last_name}</Typography>
+          <Typography variant="h6" textAlign="center">{friend.friend.first_name} {friend.friend.last_name ?? ''}</Typography>
         </Box>
         <div>
           <Box className="flex gap-2">

@@ -120,7 +120,7 @@ const AddFriend: React.FC<{
                                                     <ListItemText
                                                         primary={
                                                             <Box className="flex justify-between">
-                                                                <Box>{user.first_name} {user.last_name}</Box>
+                                                                <Box>{user.first_name} {user.last_name ?? ''}</Box>
                                                             </Box>
                                                         }
                                                         secondary={

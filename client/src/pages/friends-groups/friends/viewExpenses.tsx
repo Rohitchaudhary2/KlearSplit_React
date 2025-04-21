@@ -240,7 +240,7 @@ const ViewExpenses: React.FC<{
                                                                 disabled={expense.split_type === "SETTLEMENT"}
                                                                 onClick={() => onDeleteExpense(expense)}
                                                                 onKeyUp={(e) => e.key === 'Enter' && onDeleteExpense(expense)}
-                                                                className={"hover:text-blue-500 cursor-pointer disabled:text-gray-400 disabled:cursor-not-allowed"}
+                                                                className={"hover:text-red-500 cursor-pointer disabled:text-gray-400 disabled:cursor-not-allowed"}
                                                                 aria-label="Delete"
                                                             >
                                                                 {/* {isDeleteLoading(expense) ? (

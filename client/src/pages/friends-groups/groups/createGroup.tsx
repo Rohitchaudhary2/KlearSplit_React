@@ -36,6 +36,7 @@ const VisuallyHiddenInput = styled('input')`
 
 interface CreateGroupProps {
     open: boolean;
+    handleCreateGroup?: (group: GroupData) => void;
     handleClose: () => void;
     group?: GroupData;
     handleUpdateGroup?: (group: GroupData) => void;
@@ -45,6 +46,7 @@ interface CreateGroupProps {
 const CreateGroup: React.FC<CreateGroupProps> = ({
     open,
     group,
+    handleCreateGroup,
     handleUpdateGroup,
     handleClose,
     setGroups,
@@ -89,10 +91,10 @@ const CreateGroup: React.FC<CreateGroupProps> = ({
         if (image) formData.append("image", image);
         try {
             if (group) {
-                const formData= new FormData();
+                const formData = new FormData();
                 formData.append("group_name", groupName as string);
                 formData.append("group_description", groupDescription as string);
-                if(image) formData.append("image", image);
+                if (image) formData.append("image", image);
                 const res = await axiosInstance.patch(`${API_URLS.group}/${group.group_id}`, formData, { withCredentials: true })
                 handleUpdateGroup!(res.data.data);
                 toast.success("Group Updated successfully!")
@@ -106,6 +108,14 @@ const CreateGroup: React.FC<CreateGroupProps> = ({
             );
             const groupRes = res.data.data
             toast.success("Group created successfully");
+            handleCreateGroup!({
+                ...groupRes,
+                status: "ACCEPTED",
+                role: "CREATOR",
+                has_archived: false,
+                has_blocked: false,
+                balance_amount: "0",
+            } as GroupData)
             if (setGroups) {
                 setGroups((prevGroups) => [
                     {
@@ -267,24 +277,17 @@ const CreateGroup: React.FC<CreateGroupProps> = ({
                                     </SvgIcon>
                                 }
                             >
-                                Upload Group Image
+                                {image ? image.name : "Upload Group Image"}
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    hidden
+                                    onChange={handleImageChange}
+                                    ref={fileInputRef}
+                                />
                                 <VisuallyHiddenInput type="file" />
                             </Button>
                             <div className="flex flex-col items-center gap-2">
-                                <label
-                                    htmlFor="profile-image"
-                                    className="text-blue-600 cursor-pointer"
-                                >
-                                    {image ? image.name : "Upload Group Image"}
-                                </label>
-                                <input
-                                    type="file"
-                                    id="profile-image"
-                                    accept="image/*"
-                                    onChange={handleImageChange}
-                                    ref={fileInputRef}
-                                    className="hidden"
-                                />
                                 {image && (
                                     <Tooltip title="Remove Image" placement="top">
                                         <IconButton
@@ -297,7 +300,6 @@ const CreateGroup: React.FC<CreateGroupProps> = ({
                                     </Tooltip>
                                 )}
                             </div>
-
                             {
                                 !group &&
                                 <>
@@ -318,7 +320,7 @@ const CreateGroup: React.FC<CreateGroupProps> = ({
                                                     className="flex justify-between border-b py-1"
                                                 >
                                                     <span>
-                                                        {user.first_name} {user.last_name}
+                                                        {user.first_name} {user.last_name ?? ''}
                                                     </span>
                                                     <span className="text-gray-500">{user.role}</span>
                                                 </div>

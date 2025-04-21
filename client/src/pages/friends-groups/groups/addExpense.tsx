@@ -305,7 +305,7 @@ const AddExpense: React.FC<{
                                             ?
                                             "you"
                                             :
-                                            `${participants.find(participant => participant.group_membership_id === expenseInfo.payer_id)?.first_name} ${participants.find(participant => participant.group_membership_id === expenseInfo.payer_id)?.last_name}`
+                                            `${participants.find(participant => participant.group_membership_id === expenseInfo.payer_id)?.first_name} ${participants.find(participant => participant.group_membership_id === expenseInfo.payer_id)?.last_name ?? ''}`
                                     }
                                 </Button>
                                 <Typography>and split</Typography>

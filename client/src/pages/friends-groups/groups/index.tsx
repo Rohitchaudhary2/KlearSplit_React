@@ -11,9 +11,9 @@ import axiosInstance from "../../../utils/axiosInterceptor";
 import { API_URLS } from "../../../constants/apiUrls";
 import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
-import { Check, Clear, CurrencyRupee } from "@mui/icons-material";
+import { Check, Clear } from "@mui/icons-material";
 import { toast } from "sonner";
-import { ExpenseParticipant, GroupData, GroupExpenseData, GroupMemberData, GroupMessageData, GroupSettlementData } from "./index.model";
+import { Expense, ExpenseParticipant, GroupData, GroupExpenseData, GroupExpenseResponse, GroupMemberData, GroupMessageData, GroupSettlementData } from "./index.model";
 import { useSocket } from "../shared/search-bar/socket";
 import { format } from "date-fns";
 import classes from './index.module.css'
@@ -531,6 +531,15 @@ const GroupsPage = () => {
 
       const expenseData = { ...res.data.data.expense, total_debt_amount: debtorAmount };
 
+      if (expenseData.payer_id === currentMember?.group_membership_id) {
+        expenseData.payer = getFullNameAndImage(currentMember);
+      } else {
+        const payer = groupMembers!.find(
+          (member) => expenseData.payer_id === member.group_membership_id
+        );
+        expenseData.payer = getFullNameAndImage(payer);
+      }
+
       setCombined((prev) => [...prev, expenseData]);
       setExpenses((prev) => [...prev, expenseData]);
 
@@ -545,36 +554,97 @@ const GroupsPage = () => {
       setLoaders((prev) => ({ ...prev, addExpense: false }));
     }
   }
-  const handleSettlement = async (settlementAmount: number) => {
-    try {
-      const res = await axiosInstance.post(
-        `${API_URLS.addExpense}/${selectedGroup?.group_id}`,
-        { split_type: "SETTLEMENT", total_amount: settlementAmount },
-        { withCredentials: true }
+  const handleSettlement = async (settlement: GroupSettlementData) => {
+    selectedGroup!.balance_amount = JSON.stringify(
+      Math.round(
+        (
+          parseFloat(selectedGroup!.balance_amount) +
+          (user?.user_id === settlement.payer_id
+            ? parseFloat(settlement.settlement_amount)
+            : -parseFloat(settlement.settlement_amount))
+        ) * 100
+      ) / 100
+    );
+    
+    setCombined((prev) => [...prev, settlement]);
+    setExpenses((prev) => [...prev, settlement]);
+  }
+
+  const handleUpdateExpense = (expenseData: GroupExpenseResponse["data"], previousExpenseData: GroupExpenseData) => {
+    const debtorAmount = expenseData.expenseParticipants.reduce((acc: number, val) => {
+      return acc += +val.debtor_amount;
+    }, 0)
+    
+    Object.assign(expenseData.expense, {"total_debt_amount": debtorAmount});
+    if (expenseData.expense.payer_id === currentMember?.group_membership_id) {
+      expenseData.expense.payer = getFullNameAndImage(currentMember);
+    } else {
+      const payer = groupMembers!.find(
+        (member) => expenseData.expense.payer_id === member.group_membership_id
       );
-
-      const newExpenseData = res.data.data;
-
-      setCombined((prev) => [...prev, newExpenseData]);
-      setExpenses((prev) => [...prev, newExpenseData]);
-
-      selectedGroup!.balance_amount = JSON.stringify(
-        parseFloat(selectedGroup!.balance_amount) +
-        (user?.user_id === newExpenseData.payer_id
-          ? parseFloat(newExpenseData.debtor_amount)
-          : -parseFloat(newExpenseData.debtor_amount))
-      );
-
-      toast.success("Settlement added successfully");
-    } catch (error) {
-      toast.error("Failed to add settlement, please try again later");
+      expenseData.expense.payer = getFullNameAndImage(payer);
     }
+    const balanceAmount = parseFloat(selectedGroup!.balance_amount) + (
+      previousExpenseData.payer_id === currentMember?.group_membership_id ? 
+      - previousExpenseData.total_debt_amount :
+      +(
+        previousExpenseData.participants.find((participant) => participant.debtor_id === currentMember?.group_membership_id)?.debtor_amount ?? 0
+      )
+    ) + (
+      expenseData.expense.payer_id === currentMember?.group_membership_id ? 
+      + debtorAmount :
+      -(
+        expenseData.expenseParticipants.find((participant) => participant.debtor_id === currentMember?.group_membership_id)?.debtor_amount ?? 0
+      ) 
+    )
+    selectedGroup!.balance_amount = JSON.stringify(balanceAmount);
+    const updatedExpenses = expenses.map((expense) => {
+      if ("group_expense_id" in expense && expense.group_expense_id === expenseData.expense.group_expense_id) {
+        return expenseData.expense;
+      }
+      return expense;
+    })
+    setExpenses(updatedExpenses);
+    const updatedCombined = combined.map((item) => {
+      if ("group_expense_id" in item && item.group_expense_id === expenseData.expense.group_expense_id) {
+        return expenseData.expense;
+      }
+      return item;
+    })
+    setCombined(updatedCombined);
+  }
+
+  const handleDeleteExpense = (expenseData: GroupExpenseData) => {
+    const balanceAmount = parseFloat(selectedGroup!.balance_amount) + (
+      expenseData.payer_id === currentMember?.group_membership_id ? 
+      - expenseData.total_debt_amount :
+      +(
+        expenseData.participants.find((participant) => participant.debtor_id === currentMember?.group_membership_id)?.debtor_amount ?? 0
+      )
+    )
+    selectedGroup!.balance_amount = JSON.stringify(balanceAmount);
+    const updatedExpenses = expenses.filter((expense) => {
+      if ("group_expense_id" in expense && expense.group_expense_id === expenseData.group_expense_id) {
+        return false;
+      }
+      return true;
+    })
+    setExpenses(updatedExpenses);
+    const updatedCombined = combined.filter((item) => {
+      if ("group_expense_id" in item && item.group_expense_id === expenseData.group_expense_id) {
+        return false;
+      }
+      return true;
+    })
+    setCombined(updatedCombined);
   }
 
   const handleGroupDetailsOpen = (open: boolean) => {
     setScrollHeight(0);
     setGroupDetailsOpen(open);
   }
+
+  const handleCreateGroup = (group: GroupData) => setGroups((prev) => [...prev, group])
 
   return (
     <>
@@ -593,7 +663,7 @@ const GroupsPage = () => {
       <Box className="grid gap-4 grid-cols-4 h-[89.5vh]">
         <Box className="p-4 pe-0 flex flex-col flex-wrap h-full col-span-4 md:col-span-1" hidden={false} sx={{ backgroundColor: "#A1E3F9" }}>
           <Box className="pb-4">
-            <SearchBar placeholder="Search using group name..." />
+            <SearchBar handleCreateGroup={handleCreateGroup} placeholder="Search using group name..." />
           </Box>
           <Box className="grow flex flex-col rounded-lg shadow-md m-0 p-0 max-w-full" sx={{ backgroundColor: "white" }}>
             <Paper className="rounded-lg" elevation={5}>
@@ -620,7 +690,7 @@ const GroupsPage = () => {
                         }}>
                           <ListItemButton sx={{ paddingX: 1 }}>
                             <ListItemAvatar sx={{ minWidth: 32, paddingRight: 1 }}>
-                              <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ width: 32, height: 32 }} />
+                              <Avatar alt="Avatar" src={group.image_url ?? "assets/image.png"} sx={{ width: 40, height: 40 }} />
                             </ListItemAvatar>
                             <ListItemText
                               primary={
@@ -628,7 +698,7 @@ const GroupsPage = () => {
                                   <Box>{group.group_name}</Box>
                                   <Box className="flex gap-2 items-center" sx={{ color: parseFloat(group.balance_amount) < 0 ? 'red' : 'green' }}>
                                     <Box sx={{ verticalAlign: "middle" }}>
-                                      <CurrencyRupee sx={{ p: 0, m: 0 }} fontSize="inherit" />{Math.abs(parseFloat(group.balance_amount))}
+                                      ₹{Math.abs(parseFloat(group.balance_amount))}
                                     </Box>
                                     {(activeButton === "invites" && group.status === "RECEIVER") ? <>
                                       <button onClick={() => handleAcceptRejectRequest(group.group_id, "ACCEPTED")}><Check /></button>
@@ -654,10 +724,12 @@ const GroupsPage = () => {
               {
                 selectedGroup && currentMember ?
                   groupDetailsOpen ?
-                    <GroupDetails group={selectedGroup} groupMembers={groupMembers!} currentMember={currentMember!} handleGroupDetailsClose={() => handleGroupDetailsOpen(false)} />
+                    <GroupDetails group={selectedGroup} handleSettlement={handleSettlement} groupMembers={groupMembers!} currentMember={currentMember!} handleGroupDetailsClose={() => handleGroupDetailsOpen(false)} />
                     :
                     <>
                       <Box><Header
+                        handleUpdateExpense={handleUpdateExpense}
+                        handleDeleteExpense={handleDeleteExpense}
                         currentMember={currentMember!}
                         groupMembers={groupMembers!}
                         handleGroupDetailsOpen={() => handleGroupDetailsOpen(true)} handleBackButton={() => handleSelectGroupData(undefined)} group={selectedGroup} view={view} handleViewChange={(view: "All" | "Messages" | "Expenses") => handleViewChange(view)} /></Box>
@@ -675,8 +747,8 @@ const GroupsPage = () => {
                                 message={{ text: message.message, createdAt: format(new Date(message.createdAt), "hh:mm a") }}
                                 isCurrentUser={message.sender_id === currentMember?.group_membership_id}
                                 name={message.senderName}
-                                imageUrl="/vite.svg"
-                                currentUserImageUrl="/vite.svg"
+                                imageUrl={message.senderImage ?? "assets/image.png"}
+                                currentUserImageUrl={user?.image_url ?? "assets/image.png"}
                               />
                             )) : null
                         }
@@ -689,8 +761,8 @@ const GroupsPage = () => {
                                     key={item.group_expense_id}
                                     expense={item}
                                     isCurrentUserPayer={item.payer_id === currentMember?.group_membership_id}
-                                    imageUrl="vite.svg"
-                                    currentUserImageUrl="vite.svg"
+                                    imageUrl={item.payer.imageUrl ?? "assets/image.png"}
+                                    currentUserImageUrl={currentMember?.image_url ?? "assets/image.png"}
                                   // onRetryExpenseAddition={handleRetry}
                                   />
                                 )
@@ -702,9 +774,9 @@ const GroupsPage = () => {
                                 return (
                                   <SettlementCard key={item.group_settlement_id}
                                     isCurrentUserPayer={item.payer_id === currentMember?.group_membership_id}
-                                    payerImageUrl={payer!.image_url}
-                                    payerName={`${payer!.first_name} ${payer!.last_name}`}
-                                    debtorName={`${debtor!.first_name} ${debtor!.last_name}`}
+                                    payerImageUrl={payer!.image_url ?? "assets/image.png"}
+                                    payerName={`${payer!.first_name} ${payer!.last_name ?? ''}`}
+                                    debtorName={`${debtor!.first_name} ${debtor!.last_name ?? ''}`}
                                     settlement={item}
                                     currentUserImageUrl={currentMember!.image_url ?? "image.png"}
                                   />
@@ -723,8 +795,8 @@ const GroupsPage = () => {
                                     key={item.group_expense_id}
                                     expense={item}
                                     isCurrentUserPayer={item.payer_id === currentMember?.group_membership_id}
-                                    imageUrl="vite.svg"
-                                    currentUserImageUrl="vite.svg"
+                                    imageUrl={item.payer.imageUrl ?? "assets/image.png"}
+                                    currentUserImageUrl={currentMember?.image_url ?? "assets/image.png"}
                                   // onRetryExpenseAddition={handleRetry}
                                   />
                                 )
@@ -736,8 +808,8 @@ const GroupsPage = () => {
                                     message={{ text: item.message, createdAt: format(new Date(item.createdAt), "hh:mm a") }}
                                     isCurrentUser={item.sender_id === currentMember?.group_membership_id}
                                     name={item.senderName}
-                                    imageUrl="/vite.svg"
-                                    currentUserImageUrl="/vite.svg"
+                                    imageUrl={item.senderImage ?? "assets/image.png"}
+                                    currentUserImageUrl={user?.image_url ?? "assets/image.png"}
                                   />
                                 )
                               }
@@ -748,11 +820,11 @@ const GroupsPage = () => {
                                 return (
                                   <SettlementCard key={item.group_settlement_id}
                                     isCurrentUserPayer={item.payer_id === currentMember?.group_membership_id}
-                                    payerImageUrl={payer!.image_url}
-                                    payerName={`${payer!.first_name} ${payer!.last_name}`}
-                                    debtorName={`${debtor!.first_name} ${debtor!.last_name}`}
+                                    payerImageUrl={payer!.image_url ?? "assets/image.png"}
+                                    payerName={`${payer!.first_name} ${payer!.last_name ?? ''}`}
+                                    debtorName={`${debtor!.first_name} ${debtor!.last_name ?? ''}`}
                                     settlement={item}
-                                    currentUserImageUrl={currentMember!.image_url ?? "image.png"}
+                                    currentUserImageUrl={currentMember?.image_url ?? "assets/image.png"}
                                   />
                                 )
                               }
@@ -765,9 +837,6 @@ const GroupsPage = () => {
                       <Box><MessageInput loader={loaders.addExpense} handleAddExpensesOpen={handleAddExpensesOpen} onSend={onSend} /></Box>
                     </>
                   :
-                  // <Box className="flex flex-col justify-center content-center items-center h-100">
-                  //   <Typography className="text-blue-700" align="center">Select a group to have chat with or to add expense</Typography>
-                  // </Box>
                   <Box className="flex flex-col justify-center items-center h-full">
                     <Typography variant="h4" className="text-[#3674B5] text-center">
                       Select a group to chat with or add an expense
