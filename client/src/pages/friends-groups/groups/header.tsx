@@ -8,10 +8,11 @@ import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
 
 const Header: React.FC<{ 
+  handleLeaveGroup: (id: string) => void,
   handleUpdateExpense: (expenseData: GroupExpenseResponse["data"], previousExpenseData: GroupExpenseData) => void,
   handleDeleteExpense: (expenseData: GroupExpenseData) => void,
   group: GroupData, currentMember: GroupMemberData, groupMembers: GroupMemberData[], handleGroupDetailsOpen: () => void, handleBackButton: () => void, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, view: string }> = ({ 
-    handleUpdateExpense, handleDeleteExpense, group, currentMember, groupMembers, handleGroupDetailsOpen, handleBackButton, handleViewChange, view }) => {
+    handleLeaveGroup, handleUpdateExpense, handleDeleteExpense, group, currentMember, groupMembers, handleGroupDetailsOpen, handleBackButton, handleViewChange, view }) => {
   const [blockStatus, setBlockStatus] = useState(group.has_blocked ? "Unblock" : "Block");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -42,7 +43,7 @@ const Header: React.FC<{
   }
   const handleViewExpensesClose = () => setViewExpensesOpen(false);
   const onLeaveGroup = () => {
-
+    handleLeaveGroup(group.group_id)
   }
   return (
     <>

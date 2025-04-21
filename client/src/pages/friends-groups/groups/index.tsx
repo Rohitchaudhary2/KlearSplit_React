@@ -565,17 +565,30 @@ const GroupsPage = () => {
         ) * 100
       ) / 100
     );
-    
+
     setCombined((prev) => [...prev, settlement]);
     setExpenses((prev) => [...prev, settlement]);
+  }
+
+  const handleLeaveGroup = async (id: string) => {
+    try {
+      await axiosInstance.delete(`${API_URLS.leaveGroup}/${id}`, { withCredentials: true });
+      const updatedGroupInvites = groupInvites.filter((group) => group.group_id !== id);
+      setGroupInvites(updatedGroupInvites)
+      const updatedGroups = groups.filter((group) => group.group_id !== id);
+      setGroups(updatedGroups)
+      toast.success("Group left successfully!")
+    } catch(error) {
+      toast.error("Something went wrong. Please try again later")
+    }
   }
 
   const handleUpdateExpense = (expenseData: GroupExpenseResponse["data"], previousExpenseData: GroupExpenseData) => {
     const debtorAmount = expenseData.expenseParticipants.reduce((acc: number, val) => {
       return acc += +val.debtor_amount;
     }, 0)
-    
-    Object.assign(expenseData.expense, {"total_debt_amount": debtorAmount});
+
+    Object.assign(expenseData.expense, { "total_debt_amount": debtorAmount });
     if (expenseData.expense.payer_id === currentMember?.group_membership_id) {
       expenseData.expense.payer = getFullNameAndImage(currentMember);
     } else {
@@ -585,18 +598,18 @@ const GroupsPage = () => {
       expenseData.expense.payer = getFullNameAndImage(payer);
     }
     const balanceAmount = parseFloat(selectedGroup!.balance_amount) + (
-      previousExpenseData.payer_id === currentMember?.group_membership_id ? 
-      - previousExpenseData.total_debt_amount :
-      +(
-        previousExpenseData.participants.find((participant) => participant.debtor_id === currentMember?.group_membership_id)?.debtor_amount ?? 0
-      )
+      previousExpenseData.payer_id === currentMember?.group_membership_id ?
+        - previousExpenseData.total_debt_amount :
+        +(
+          previousExpenseData.participants.find((participant) => participant.debtor_id === currentMember?.group_membership_id)?.debtor_amount ?? 0
+        )
     ) + (
-      expenseData.expense.payer_id === currentMember?.group_membership_id ? 
-      + debtorAmount :
-      -(
-        expenseData.expenseParticipants.find((participant) => participant.debtor_id === currentMember?.group_membership_id)?.debtor_amount ?? 0
-      ) 
-    )
+        expenseData.expense.payer_id === currentMember?.group_membership_id ?
+          + debtorAmount :
+          -(
+            expenseData.expenseParticipants.find((participant) => participant.debtor_id === currentMember?.group_membership_id)?.debtor_amount ?? 0
+          )
+      )
     selectedGroup!.balance_amount = JSON.stringify(balanceAmount);
     const updatedExpenses = expenses.map((expense) => {
       if ("group_expense_id" in expense && expense.group_expense_id === expenseData.expense.group_expense_id) {
@@ -616,11 +629,11 @@ const GroupsPage = () => {
 
   const handleDeleteExpense = (expenseData: GroupExpenseData) => {
     const balanceAmount = parseFloat(selectedGroup!.balance_amount) + (
-      expenseData.payer_id === currentMember?.group_membership_id ? 
-      - expenseData.total_debt_amount :
-      +(
-        expenseData.participants.find((participant) => participant.debtor_id === currentMember?.group_membership_id)?.debtor_amount ?? 0
-      )
+      expenseData.payer_id === currentMember?.group_membership_id ?
+        - expenseData.total_debt_amount :
+        +(
+          expenseData.participants.find((participant) => participant.debtor_id === currentMember?.group_membership_id)?.debtor_amount ?? 0
+        )
     )
     selectedGroup!.balance_amount = JSON.stringify(balanceAmount);
     const updatedExpenses = expenses.filter((expense) => {
@@ -728,6 +741,7 @@ const GroupsPage = () => {
                     :
                     <>
                       <Box><Header
+                        handleLeaveGroup={handleLeaveGroup}
                         handleUpdateExpense={handleUpdateExpense}
                         handleDeleteExpense={handleDeleteExpense}
                         currentMember={currentMember!}
