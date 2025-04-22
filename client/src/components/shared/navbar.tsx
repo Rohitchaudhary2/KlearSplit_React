@@ -12,10 +12,11 @@ import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/authSlice';
 import { API_URLS } from '../../constants/apiUrls';
 import axiosInstance from '../../utils/axiosInterceptor';
+import { RootState } from '../../store';
 
 const pages = ["dashboard", 'friends', 'groups'];
 
@@ -24,6 +25,7 @@ function ResponsiveAppBar() {
   const [anchorElUser, setAnchorElUser] = React.useState<null | HTMLElement>(null);
   const dispatch = useDispatch();
   const location = useLocation();
+  const user = useSelector((store: RootState) => store.auth.user);
   const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorElNav(event.currentTarget);
   };
@@ -158,7 +160,7 @@ function ResponsiveAppBar() {
           <Box sx={{ flexGrow: 0 }}>
             <Tooltip title="Profile Settings">
               <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                <Avatar alt="Remy Sharp" src="/static/images/avatar/2.jpg" />
+                <Avatar alt="Avatar" src={user?.image_url ?? "assets/image.png"} />
               </IconButton>
             </Tooltip>
             <Menu

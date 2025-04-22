@@ -46,7 +46,6 @@ const Profile = () => {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            // Optionally upload to server here
             setImage(file);
             setPreviewImage(`assets/${file.name}`)
         }

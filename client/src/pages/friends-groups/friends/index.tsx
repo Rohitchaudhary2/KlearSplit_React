@@ -25,6 +25,9 @@ const Friendspage = () => {
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [friendRequests, setFriendRequests] = useState<Friend[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [filteredFriendRequests, setFilteredFriendRequests] = useState<Friend[]>([]);
+  const [filteredFriends, setFilteredFriends] = useState<Friend[]>([]);
+  const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [combined, setCombined] = useState<(Message | Expense)[]>([]);
@@ -458,6 +461,13 @@ const Friendspage = () => {
     })
     setCombined(updatedCombined);
   }
+  const handleSearch = (query: string) => {
+    const updatedRequests = friendRequests.filter((friend) => friend.friend.email.includes(query));
+    setFilteredFriendRequests(updatedRequests);
+    const updatedFriends = friends.filter((friend) => friend.friend.email.includes(query));
+    setFilteredFriends(updatedFriends);
+    setQuery(query);
+  }
   return (
     <>
       {
@@ -466,7 +476,7 @@ const Friendspage = () => {
       <Box className="grid gap-4 grid-cols-4 h-[89.5vh]">
         <Box className="p-4 pe-0 flex flex-col flex-wrap h-full col-span-4 md:col-span-1" hidden={false} sx={{ backgroundColor: "#A1E3F9" }}>
           <Box className="pb-4">
-            <SearchBar handleAddFriendRequests={handleAddFriendRequests} placeholder="Search using email..." />
+            <SearchBar handleSearch={handleSearch} handleAddFriendRequests={handleAddFriendRequests} placeholder="Search using email..." />
           </Box>
           <Box className="grow flex flex-col rounded-lg shadow-md m-0 p-0 max-w-full" sx={{ backgroundColor: "white" }}>
             <Paper className="rounded-lg" elevation={5}>
@@ -491,7 +501,7 @@ const Friendspage = () => {
                   !loaders[activeButton] && !(activeButton === "friends" ? friends : friendRequests).length && "No Data found!"
                 }
                 {
-                  (activeButton === "friends" ? friends : friendRequests).map((friend) => {
+                  (activeButton === "friends" ? (query ? filteredFriends : friends) : (query ? filteredFriendRequests : friendRequests)).map((friend) => {
                     return (
                       < Fragment key={friend.conversation_id}>
 

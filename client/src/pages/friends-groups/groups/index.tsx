@@ -27,6 +27,9 @@ const GroupsPage = () => {
   const [addExpenseDialogOpen, setAddExpenseDialogOpen] = useState(false);
   const [groupInvites, setGroupInvites] = useState<GroupData[]>([]);
   const [groups, setGroups] = useState<GroupData[]>([]);
+  const [query, setQuery] = useState("");
+  const [filteredGroupInvites, setFilteredGroupInvites] = useState<GroupData[]>([]);
+  const [filteredGroups, setFilteredGroups] = useState<GroupData[]>([]);
   const [messages, setMessages] = useState<GroupMessageData[]>([]);
   const [expenses, setExpenses] = useState<(GroupExpenseData | GroupSettlementData)[]>([]);
   const [combined, setCombined] = useState<(GroupMessageData | GroupExpenseData | GroupSettlementData)[]>([]);
@@ -480,7 +483,7 @@ const GroupsPage = () => {
     return filteredMembers;
   }
   const handleSelectGroupData = async (group: GroupData | undefined) => {
-    // if (!user) return;
+    setGroupDetailsOpen(false);
     if (group) {
       try {
         const res = await axiosInstance.get(
@@ -518,7 +521,7 @@ const GroupsPage = () => {
   const addExpense = async (expenseInfo: FormData) => {
     setLoaders((prev) => ({ ...prev, addExpense: true }));
     try {
-      const res = await axiosInstance.post(
+      const res = await axiosInstance.post<GroupExpenseResponse>(
         `${API_URLS.addGroupExpense}/${selectedGroup?.group_id}`,
         expenseInfo,
         { withCredentials: true }
@@ -529,7 +532,7 @@ const GroupsPage = () => {
         0
       );
 
-      const expenseData = { ...res.data.data.expense, total_debt_amount: debtorAmount };
+      const expenseData = { ...res.data.data.expense, total_debt_amount: JSON.stringify(debtorAmount) };
 
       if (expenseData.payer_id === currentMember?.group_membership_id) {
         expenseData.payer = getFullNameAndImage(currentMember);
@@ -540,6 +543,37 @@ const GroupsPage = () => {
         expenseData.payer = getFullNameAndImage(payer);
       }
 
+      const isUserPayer = currentMember?.group_membership_id === expenseData.payer_id;
+
+      const updatedGroupMembers = groupMembers!.map((member) => {
+        if (member.group_membership_id === expenseData.payer_id) {
+          member.total_balance = JSON.stringify(
+            Math.round((parseFloat(member.total_balance) + debtorAmount) * 100) / 100
+          );
+          const userDebtAmount = res.data.data.expenseParticipants.find(
+            (participant) => participant.debtor_id === currentMember?.group_membership_id
+          )?.debtor_amount ?? 0;
+          member.balance_with_user = JSON.stringify(
+            Math.round((+member.balance_with_user + +userDebtAmount) * 100) / 100
+          );
+        }
+
+        res.data.data.expenseParticipants.forEach((participant) => {
+          if (participant.debtor_id === member.group_membership_id) {
+            if (isUserPayer) {
+              member.balance_with_user = JSON.stringify(
+                Math.round((+member.balance_with_user - +participant.debtor_amount) * 100) / 100
+              );
+            }
+            member.total_balance = JSON.stringify(
+              Math.round((+member.total_balance - +participant.debtor_amount) * 100) / 100
+            );
+          }
+        })
+        return member;
+      })
+
+      setGroupMembers(updatedGroupMembers);
       setCombined((prev) => [...prev, expenseData]);
       setExpenses((prev) => [...prev, expenseData]);
 
@@ -565,6 +599,17 @@ const GroupsPage = () => {
         ) * 100
       ) / 100
     );
+    groupMembers!.map((member) => {
+      if (member.group_membership_id === settlement.payer_id) {
+        member.total_balance = JSON.stringify(
+          Math.round((parseFloat(member.total_balance) + +settlement.settlement_amount) * 100) / 100
+        );
+        member.balance_with_user = JSON.stringify(
+          Math.round((+member.balance_with_user + +settlement.settlement_amount) * 100) / 100
+        );
+      }
+      return member;
+    })
 
     setCombined((prev) => [...prev, settlement]);
     setExpenses((prev) => [...prev, settlement]);
@@ -578,7 +623,7 @@ const GroupsPage = () => {
       const updatedGroups = groups.filter((group) => group.group_id !== id);
       setGroups(updatedGroups)
       toast.success("Group left successfully!")
-    } catch(error) {
+    } catch (error) {
       toast.error("Something went wrong. Please try again later")
     }
   }
@@ -597,6 +642,62 @@ const GroupsPage = () => {
       );
       expenseData.expense.payer = getFullNameAndImage(payer);
     }
+    const wasUserPayer = currentMember?.group_membership_id === previousExpenseData.payer_id;
+    const isUserPayer = currentMember?.group_membership_id === expenseData.expense.payer_id;
+
+    const updatedGroupMembers = groupMembers!.map((member) => {
+      if (member.group_membership_id === previousExpenseData.payer_id) {
+        member.total_balance = JSON.stringify(
+          Math.round((parseFloat(member.total_balance) - +previousExpenseData.total_debt_amount) * 100) / 100
+        );
+        const userDebtAmount = previousExpenseData.participants.find(
+          (participant) => participant.debtor_id === currentMember?.group_membership_id
+        )?.debtor_amount ?? 0;
+        member.balance_with_user = JSON.stringify(
+          Math.round((+member.balance_with_user - +userDebtAmount) * 100) / 100
+        );
+      }
+
+      previousExpenseData.participants.forEach((participant) => {
+        if (participant.debtor_id === member.group_membership_id) {
+          if (wasUserPayer) {
+            member.balance_with_user = JSON.stringify(
+              Math.round((+member.balance_with_user + +participant.debtor_amount) * 100) / 100
+            );
+          }
+          member.total_balance = JSON.stringify(
+            Math.round((+member.total_balance + +participant.debtor_amount) * 100) / 100
+          );
+        }
+      })
+      if (member.group_membership_id === expenseData.expense.payer_id) {
+        member.total_balance = JSON.stringify(
+          Math.round((parseFloat(member.total_balance) + debtorAmount) * 100) / 100
+        );
+        const userDebtAmount = expenseData.expenseParticipants.find(
+          (participant) => participant.debtor_id === currentMember?.group_membership_id
+        )?.debtor_amount ?? 0;
+        member.balance_with_user = JSON.stringify(
+          Math.round((+member.balance_with_user + +userDebtAmount) * 100) / 100
+        );
+      }
+
+      expenseData.expenseParticipants.forEach((participant) => {
+        if (participant.debtor_id === member.group_membership_id) {
+          if (isUserPayer) {
+            member.balance_with_user = JSON.stringify(
+              Math.round((+member.balance_with_user - +participant.debtor_amount) * 100) / 100
+            );
+          }
+          member.total_balance = JSON.stringify(
+            Math.round((+member.total_balance - +participant.debtor_amount) * 100) / 100
+          );
+        }
+      })
+      return member;
+    })
+
+    setGroupMembers(updatedGroupMembers);
     const balanceAmount = parseFloat(selectedGroup!.balance_amount) + (
       previousExpenseData.payer_id === currentMember?.group_membership_id ?
         - previousExpenseData.total_debt_amount :
@@ -636,6 +737,37 @@ const GroupsPage = () => {
         )
     )
     selectedGroup!.balance_amount = JSON.stringify(balanceAmount);
+    const wasUserPayer = currentMember?.group_membership_id === expenseData.payer_id;
+
+    const updatedGroupMembers = groupMembers!.map((member) => {
+      if (member.group_membership_id === expenseData.payer_id) {
+        member.total_balance = JSON.stringify(
+          Math.round((parseFloat(member.total_balance) - +expenseData.total_debt_amount) * 100) / 100
+        );
+        const userDebtAmount = expenseData.participants.find(
+          (participant) => participant.debtor_id === currentMember?.group_membership_id
+        )?.debtor_amount ?? 0;
+        member.balance_with_user = JSON.stringify(
+          Math.round((+member.balance_with_user - +userDebtAmount) * 100) / 100
+        );
+      }
+
+      expenseData.participants.forEach((participant) => {
+        if (participant.debtor_id === member.group_membership_id) {
+          if (wasUserPayer) {
+            member.balance_with_user = JSON.stringify(
+              Math.round((+member.balance_with_user + +participant.debtor_amount) * 100) / 100
+            );
+          }
+          member.total_balance = JSON.stringify(
+            Math.round((+member.total_balance + +participant.debtor_amount) * 100) / 100
+          );
+        }
+      })
+      return member;
+    })
+
+    setGroupMembers(updatedGroupMembers);
     const updatedExpenses = expenses.filter((expense) => {
       if ("group_expense_id" in expense && expense.group_expense_id === expenseData.group_expense_id) {
         return false;
@@ -663,6 +795,13 @@ const GroupsPage = () => {
     setGroupMembers((prev) => [...(prev ?? []), ...members.addedMembers]);
   }
 
+  const handleSearch = (query: string) => {
+    const updatedInvites = groupInvites.filter((group) => group.group_name.toLowerCase().includes(query));
+    setFilteredGroupInvites(updatedInvites);
+    const updatedGroups = groups.filter((group) => group.group_name.toLowerCase().includes(query));
+    setFilteredGroups(updatedGroups);
+    setQuery(query);
+  }
   return (
     <>
       {
@@ -680,7 +819,7 @@ const GroupsPage = () => {
       <Box className="grid gap-4 grid-cols-4 h-[89.5vh]">
         <Box className="p-4 pe-0 flex flex-col flex-wrap h-full col-span-4 md:col-span-1" hidden={false} sx={{ backgroundColor: "#A1E3F9" }}>
           <Box className="pb-4">
-            <SearchBar handleCreateGroup={handleCreateGroup} placeholder="Search using group name..." />
+            <SearchBar handleSearch={handleSearch} handleCreateGroup={handleCreateGroup} placeholder="Search using group name..." />
           </Box>
           <Box className="grow flex flex-col rounded-lg shadow-md m-0 p-0 max-w-full" sx={{ backgroundColor: "white" }}>
             <Paper className="rounded-lg" elevation={5}>
@@ -699,7 +838,7 @@ const GroupsPage = () => {
               <List dense className="max-h-[70.2vh] min-h-[70.2vh] overflow-y-auto overflow-x-auto " sx={{ width: '100%', padding: 0, bgcolor: 'background.paper', borderRadius: "0px 0px 8px 8px" }}>
                 <Divider />
                 {
-                  (activeButton === "groups" ? groups : groupInvites).map((group) => {
+                  (activeButton === "groups" ? (query ? filteredGroups : groups) : (query ? filteredGroupInvites : groupInvites)).map((group) => {
                     return (
                       <Fragment key={group.group_id}>
                         <ListItem disablePadding alignItems="flex-start" key={group.group_id} onClick={() => {
@@ -745,7 +884,7 @@ const GroupsPage = () => {
                     :
                     <>
                       <Box><Header
-                      handleAddGroupMembers={handleAddMembers}
+                        handleAddGroupMembers={handleAddMembers}
                         handleLeaveGroup={handleLeaveGroup}
                         handleUpdateExpense={handleUpdateExpense}
                         handleDeleteExpense={handleDeleteExpense}
