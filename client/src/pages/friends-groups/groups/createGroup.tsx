@@ -17,10 +17,9 @@ import { Close } from "@mui/icons-material";
 import SelectMembersDialog from "./selectMembers";
 // import { createGroup } from "./services";
 import { toast } from "sonner";
-import { CreateGroupResponse, GroupData, SelectableUser } from "./index.model";
+import { GroupData, SelectableUser } from "./index.model";
 import CustomDialog from "../../../components/base/customModal";
-import { API_URLS } from "../../../constants/apiUrls";
-import axiosInstance from "../../../utils/axiosInterceptor";
+import { onCreateGroup, onUpdateGroup } from "./services";
 
 const VisuallyHiddenInput = styled('input')`
   clip: rect(0 0 0 0);
@@ -95,17 +94,13 @@ const CreateGroup: React.FC<CreateGroupProps> = ({
                 formData.append("group_name", groupName as string);
                 formData.append("group_description", groupDescription as string);
                 if (image) formData.append("image", image);
-                const res = await axiosInstance.patch(`${API_URLS.group}/${group.group_id}`, formData, { withCredentials: true })
+                const res = await onUpdateGroup(formData, group.group_id)
                 handleUpdateGroup!(res.data.data);
                 toast.success("Group Updated successfully!")
                 handleClose()
                 return;
             }
-            const res = await axiosInstance.post<CreateGroupResponse>(
-                `${API_URLS.createGroup}`,
-                formData,
-                { withCredentials: true }
-            );
+            const res = await onCreateGroup(formData);
             const groupRes = res.data.data
             toast.success("Group created successfully");
             handleCreateGroup!({

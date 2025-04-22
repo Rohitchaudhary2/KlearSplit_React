@@ -4,9 +4,8 @@ import { useState } from "react";
 import ViewExpenses from "./viewExpenses";
 import Settlement from "./settlement";
 import { Expense, Friend } from "./index.model";
-import axiosInstance from "../../../utils/axiosInterceptor";
-import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
+import { onAcceptRejectRequest } from "./services";
 
 const Header: React.FC<{ friend: Friend, handleUpdateExpense: (expense: Expense) => void, handleDeleteExpense: (expense: Expense) => void, handleSelectFriend: (friend: Friend | undefined) => void, handleViewChange: (view: "All" | "Messages" | "Expenses") => void, handleSettlement: (settlementAmount: number) => void, view: string }> = ({ friend, handleUpdateExpense, handleDeleteExpense, handleSelectFriend, handleViewChange, handleSettlement, view }) => {
   const isBlock = friend.block_status === "BOTH" || (friend.block_status === "FRIEND1" && friend.status === "SENDER") || (friend.block_status === "FRIEND2" && friend.status === "RECEIVER")
@@ -41,11 +40,7 @@ const Header: React.FC<{ friend: Friend, handleUpdateExpense: (expense: Expense)
         toast.warning("Settle up before this action")
         return;
       }
-      await axiosInstance.patch(
-        `${API_URLS.archiveBlockRequest}/${friend.conversation_id}`,
-        { type: "archived" },
-        { withCredentials: true }
-      );
+      await onAcceptRejectRequest("archived", friend.conversation_id)
 
       toast.success(`${archiveStatus}d successfully`);
       setArchiveStatus(() => archiveStatus === "Archive" ? "Unarchive" : "Archive");
@@ -59,11 +54,7 @@ const Header: React.FC<{ friend: Friend, handleUpdateExpense: (expense: Expense)
         toast.warning("Settle up before this action")
         return;
       }
-      await axiosInstance.patch(
-        `${API_URLS.archiveBlockRequest}/${friend.conversation_id}`,
-        { type: "blocked" },
-        { withCredentials: true }
-      );
+      await onAcceptRejectRequest("blocked", friend.conversation_id)
 
       toast.success(`${blockStatus}ed successfully`);
       setBlockStatus(() => blockStatus === "Block" ? "Unblock" : "Block");

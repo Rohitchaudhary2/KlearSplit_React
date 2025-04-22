@@ -15,9 +15,8 @@ import { useCallback, useState } from "react";
 import debounce from "../../../utils/debounce";
 import { SelectableUser, SearchedUser, AddMemberResponse } from "./index.model";
 import { Close } from "@mui/icons-material";
-import { API_URLS } from "../../../constants/apiUrls";
-import axiosInstance from "../../../utils/axiosInterceptor";
 import { toast } from "sonner";
+import { onAddMembers, onGetUsers } from "./services";
 
 interface Props {
   open: boolean;
@@ -46,7 +45,7 @@ const SelectMembersDialog: React.FC<Props> = ({
       if (!q.trim()) return setSearchResults([]);
       setLoading(true);
       try {
-        const results = await axiosInstance.get(`${API_URLS.getUsers}/${q}`, { params: { fetchAll: true } });
+        const results = await onGetUsers(q);
         setSearchResults(results.data.data);
       } catch (err) {
         setSearchResults([]);
@@ -105,11 +104,7 @@ const SelectMembersDialog: React.FC<Props> = ({
   const handleSave = async() => {
     if(groupId) {
       const membersData = handleMembersData();
-        const addedMembers = await axiosInstance.post(
-          API_URLS.addGroupMembers,
-          { membersData, group_id: groupId },
-          {withCredentials: true}
-        );
+        const addedMembers = await onAddMembers({ membersData, group_id: groupId })
         handleAddMembers!(addedMembers.data.data);
         handleClose();
         toast.success("Members added successfully to the group!");

@@ -7,8 +7,6 @@ import MessageItem from "./message";
 import ExpenseItem from "./expense";
 import Badge from '@mui/joy/Badge';
 import AddExpense from "./addExpense";
-import axiosInstance from "../../../utils/axiosInterceptor";
-import { API_URLS } from "../../../constants/apiUrls";
 import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
 import { Check, Clear } from "@mui/icons-material";
@@ -18,6 +16,7 @@ import { useSocket } from "../shared/search-bar/socket";
 import { format } from "date-fns";
 import classes from './index.module.css'
 import { useNavigate } from "react-router-dom";
+import { onAcceptRejectRequest, onAddExpense, onAddSettlement, onGetCombined, onGetExpenses, onGetFriends, onGetMessages } from "./services";
 
 const Friendspage = () => {
   const [activeButton, setActiveButton] = useState<"friends" | "friendRequests">("friends");
@@ -113,10 +112,7 @@ const Friendspage = () => {
     const getFriendRequests = async () => {
       setLoaders((prev) => ({ ...prev, friendRequests: true }))
       try {
-        const res = await axiosInstance.get(`${API_URLS.getFriends}`, {
-          params: { status: "PENDING" },
-          withCredentials: true
-        });
+        const res = await onGetFriends({status: 'PENDING'});
         setFriendRequests(res.data.data);
 
       } catch (error) {
@@ -128,10 +124,7 @@ const Friendspage = () => {
     const friends = async () => {
       setLoaders((prev) => ({ ...prev, friends: true }));
       try {
-        const res = await axiosInstance.get(API_URLS.getFriends, {
-          params: { status: "ACCEPTED" },
-          withCredentials: true
-        });
+        const res = await onGetFriends({ status: "ACCEPTED" });
 
         setFriends(res.data.data);
 
@@ -163,18 +156,9 @@ const Friendspage = () => {
 
         try {
           const [messagesRes, expensesRes, combinedRes] = await Promise.all([
-            axiosInstance.get(`${API_URLS.getMessages}/${selectedFriend?.conversation_id}`, {
-              params: { pageSize, timestamp: timestampMessages },
-              withCredentials: true
-            }),
-            axiosInstance.get(`${API_URLS.getExpenses}/${selectedFriend.conversation_id}`, {
-              params: { pageSize, timestamp: timestampExpenses },
-              withCredentials: true
-            }),
-            axiosInstance.get(`${API_URLS.getCombined}/${selectedFriend.conversation_id}`, {
-              params: { pageSize, timestamp: timestampCombined },
-              withCredentials: true
-            }),
+            onGetMessages({ pageSize, timestamp: timestampMessages }, selectedFriend.conversation_id),
+            onGetExpenses({ pageSize, timestamp: timestampExpenses }, selectedFriend.conversation_id),
+            onGetCombined({ pageSize, timestamp: timestampCombined }, selectedFriend.conversation_id)
           ]);
 
           // Handle messages
@@ -196,8 +180,7 @@ const Friendspage = () => {
           setCombined(combined);
 
         } catch (error) {
-          console.error("Error fetching data:", error);
-          // Optionally show error state here
+          toast.error("Error fetching data, please try again later")
         } finally {
           setLoading(() => false); // Only done when all above are finished (or errored)
         }
@@ -214,10 +197,7 @@ const Friendspage = () => {
             if (!allCombinedLoaded && combined.length) {
               setLoading(() => true)
               try {
-                const res = await axiosInstance.get(`${API_URLS.getCombined}/${selectedFriend?.conversation_id}`, {
-                  params: { pageSize, timestamp: timestampCombined },
-                  withCredentials: true
-                });
+                const res = await onGetCombined({ pageSize, timestamp: timestampCombined }, selectedFriend.conversation_id)
 
                 const combined = sortBycreatedAt(res.data.data);
 
@@ -238,10 +218,7 @@ const Friendspage = () => {
             if (!allMessagesLoaded && messages.length) {
               setLoading(() => true)
               try {
-                const res = await axiosInstance.get(`${API_URLS.getMessages}/${selectedFriend?.conversation_id}`, {
-                  params: { pageSize, timestamp: timestampMessages },
-                  withCredentials: true
-                });
+                const res = await onGetMessages({ pageSize, timestamp: timestampMessages }, selectedFriend.conversation_id)
 
                 const messages = sortBycreatedAt(res.data.data);
 
@@ -262,10 +239,7 @@ const Friendspage = () => {
             if (!allExpensesLoaded && expenses.length) {
               setLoading(true)
               try {
-                const res = await axiosInstance.get(`${API_URLS.getExpenses}/${selectedFriend?.conversation_id}`, {
-                  params: { pageSize, timestamp: timestampExpenses },
-                  withCredentials: true
-                });
+                const res = await onGetExpenses({ pageSize, timestamp: timestampExpenses }, selectedFriend.conversation_id)
 
                 const expenses = sortBycreatedAt(res.data.data);
 
@@ -313,12 +287,27 @@ const Friendspage = () => {
   const handleAddExpensesClose = () => setAddExpenseDialogOpen(false);
   const handleAddExpensesOpen = () => setAddExpenseDialogOpen(true);
   const handleAcceptRejectRequest = async (conversationId: string, status: string) => {
-    const res = await axiosInstance.patch(`${API_URLS.acceptRejectRequest}/${conversationId}`, { status }, { withCredentials: true });
-    if (res.data.success) {
-      const acceptedRequest = friendRequests.find(request => request.conversation_id === conversationId);
-      setFriendRequests(friendRequests.filter((request) => request.conversation_id !== conversationId));
-      setFriends([...friends, { ...acceptedRequest!, "status": "ACCEPTED" }])
-      toast.success(`Request ${status} successfully`)
+    try {
+      const res = await onAcceptRejectRequest(status, conversationId);
+    
+      if (res.data.success) {
+        const acceptedRequest = friendRequests.find(
+          request => request.conversation_id === conversationId
+        );
+    
+        setFriendRequests(
+          friendRequests.filter(request => request.conversation_id !== conversationId)
+        );
+    
+        setFriends([
+          ...friends,
+          { ...acceptedRequest!, status: "ACCEPTED" }
+        ]);
+    
+        toast.success(`Request ${status.toLowerCase()} successfully`);
+      }
+    } catch (error) {
+      toast.error("Something went wrong. Please try again.");
     }
   }
   const handleViewChange = (view: "All" | "Messages" | "Expenses") => {
@@ -355,11 +344,7 @@ const Friendspage = () => {
   const addExpense = async (expenseInfo: FormData) => {
     setLoaders((prev) => ({ ...prev, addExpense: true }));
     try {
-      const res = await axiosInstance.post(
-        `${API_URLS.addExpense}/${selectedFriend?.conversation_id}`,
-        expenseInfo,
-        { withCredentials: true }
-      );
+      const res = await onAddExpense(expenseInfo, selectedFriend!.conversation_id);
 
       const expense = {
         ...res.data.data,
@@ -388,11 +373,7 @@ const Friendspage = () => {
   }
   const handleSettlement = async (settlementAmount: number) => {
     try {
-      const res = await axiosInstance.post(
-        `${API_URLS.addExpense}/${selectedFriend?.conversation_id}`,
-        { split_type: "SETTLEMENT", total_amount: settlementAmount },
-        { withCredentials: true }
-      );
+      const res = await onAddSettlement(settlementAmount, selectedFriend!.conversation_id);
 
       const settlement = {
         ...res.data.data,

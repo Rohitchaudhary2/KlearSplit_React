@@ -4,10 +4,9 @@ import { Avatar } from '@mui/joy';
 import { Email, Lock, Person, Phone, Visibility, VisibilityOff } from "@mui/icons-material";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
-import axiosInstance from "../../utils/axiosInterceptor";
-import { API_URLS } from "../../constants/apiUrls";
 import { login } from "../../store/authSlice";
 import { toast } from "sonner";
+import { onUpdatePassword, onUpdateProfile } from "./services";
 
 const Profile = () => {
     const user = useSelector((store: RootState) => store.auth.user)
@@ -128,11 +127,7 @@ const Profile = () => {
         if (profileInfo.phone) formData.append("phone", profileInfo.phone)
         if (image) formData.append("profile", image)
         try {
-            const res = await axiosInstance.patch(
-                `${API_URLS.updateProfile}/${user?.user_id}`,
-                formData,
-                { withCredentials: true }
-            );
+            const res = await onUpdateProfile(formData, user!.user_id);
 
             toast.success("Profile updated successfully!");
             dispatch(login(res.data.data));
@@ -142,14 +137,7 @@ const Profile = () => {
     }
     const handleChangePassword = async () => {
         try {
-            await axiosInstance.patch(
-                `${API_URLS.updateProfile}/${user?.user_id}`,
-                {
-                    "password": passwords.currentPassword,
-                    "new_password": passwords.newPassword
-                },
-                { withCredentials: true }
-            );
+            await onUpdatePassword(passwords, user!.user_id);
 
             toast.success("Password changed successfully");
             setPasswords({

@@ -3,10 +3,9 @@ import { Avatar, Box, FormControl, IconButton, ListItemAvatar, Menu, MenuItem, S
 import { useState } from "react";
 import ViewExpenses from "./viewExpenses";
 import { AddMemberResponse, GroupData, GroupExpenseData, GroupExpenseResponse, GroupMemberData } from "./index.model";
-import axiosInstance from "../../../utils/axiosInterceptor";
-import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
 import SelectMembersDialog from "./selectMembers";
+import { onUpdateGroupMember } from "./services";
 
 const Header: React.FC<{
   handleAddGroupMembers: (members: AddMemberResponse["data"]) => void,
@@ -38,11 +37,7 @@ const Header: React.FC<{
           toast.warning("Settle up before this action")
           return;
         }
-        await axiosInstance.patch(
-          `${API_URLS.updateGroupMember}/${group.group_id}`,
-          { has_blocked: !group.has_blocked },
-          { withCredentials: true }
-        );
+        await onUpdateGroupMember({ has_blocked: !group.has_blocked }, group.group_id);
 
         toast.success(`${blockStatus}ed successfully`);
         setBlockStatus(() => (blockStatus === "Block" ? "Unblock" : "Block"));
@@ -56,11 +51,7 @@ const Header: React.FC<{
           toast.warning("Settle up before this action")
           return;
         }
-        await axiosInstance.patch(
-          `${API_URLS.updateGroupMember}/${group.group_id}`,
-          { has_archived: !group.has_archived },
-          { withCredentials: true }
-        );
+        await onUpdateGroupMember({ has_archived: !group.has_archived }, group.group_id);
 
         toast.success(`${archivalStatus}ed successfully`);
         setArchivalStatus(() => (archivalStatus === "Archive" ? "Unarchive" : "Archive"));

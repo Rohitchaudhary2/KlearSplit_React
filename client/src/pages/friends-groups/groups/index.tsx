@@ -7,8 +7,6 @@ import MessageItem from "./message";
 import ExpenseItem from "./expense";
 import Badge from '@mui/joy/Badge';
 import AddExpense from "./addExpense";
-import axiosInstance from "../../../utils/axiosInterceptor";
-import { API_URLS } from "../../../constants/apiUrls";
 import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
 import { Check, Clear } from "@mui/icons-material";
@@ -20,6 +18,7 @@ import classes from './index.module.css'
 import GroupDetails from "./groupDetails";
 import SettlementCard from "./settlementDisplay";
 import { useNavigate } from "react-router-dom";
+import { onAcceptRejectRequest, onAddExpense, onGetCombined, onGetExpensesSettlements, onGetGroupData, onGetGroups, onGetMessages, onLeaveGroup } from "./services";
 
 const GroupsPage = () => {
   const [activeButton, setActiveButton] = useState("groups");
@@ -125,11 +124,7 @@ const GroupsPage = () => {
   useEffect(() => {
     const getGroups = async () => {
       try {
-        const res = await axiosInstance.get(`${API_URLS.getGroups}`, {
-          params: { status: "PENDING" },
-          withCredentials: true
-        });
-
+        const res = await onGetGroups();
         setGroupInvites(res.data.data.invitedGroups);
         setGroups(res.data.data.acceptedGroups);
       } catch (error) {
@@ -163,18 +158,9 @@ const GroupsPage = () => {
 
         try {
           const [messagesRes, expensesRes, combinedRes] = await Promise.all([
-            axiosInstance.get(`${API_URLS.getGroupMessages}/${selectedGroup?.group_id}`, {
-              params: { pageSize, timestamp: timestampMessages },
-              withCredentials: true
-            }),
-            axiosInstance.get(`${API_URLS.fetchExpensesSettlements}/${selectedGroup.group_id}`, {
-              params: { pageSize, timestamp: timestampExpenses },
-              withCredentials: true
-            }),
-            axiosInstance.get(`${API_URLS.fetchGroupCombined}/${selectedGroup.group_id}`, {
-              params: { pageSize, timestamp: timestampCombined },
-              withCredentials: true
-            }),
+            onGetMessages({ pageSize, timestamp: timestampMessages }, selectedGroup.group_id),
+            onGetExpensesSettlements({ pageSize, timestamp: timestampExpenses }, selectedGroup.group_id),
+            onGetCombined({ pageSize, timestamp: timestampCombined }, selectedGroup.group_id)
           ]);
 
           // Handle messages
@@ -259,13 +245,7 @@ const GroupsPage = () => {
             if (!allCombinedLoaded && combined.length) {
               setLoading(() => true)
               try {
-                const res = await axiosInstance.get(
-                  `${API_URLS.fetchGroupCombined}/${selectedGroup?.group_id}`,
-                  {
-                    params: { pageSize, timestamp: timestampCombined },
-                    withCredentials: true
-                  }
-                );
+                const res = await onGetCombined({ pageSize, timestamp: timestampCombined }, selectedGroup.group_id);
 
                 const combined = sortBycreatedAt(res.data.data);
 
@@ -317,13 +297,7 @@ const GroupsPage = () => {
             if (!allMessagesLoaded && messages.length) {
               setLoading(() => true)
               try {
-                const res = await axiosInstance.get(
-                  `${API_URLS.getGroupMessages}/${selectedGroup?.group_id}`,
-                  {
-                    params: { pageSize, timestamp: timestampMessages },
-                    withCredentials: true
-                  }
-                );
+                const res = await onGetMessages({ pageSize, timestamp: timestampMessages }, selectedGroup.group_id)
 
                 const messages = res.data.data.sort(
                   (a: GroupMessageData, b: GroupMessageData) =>
@@ -360,13 +334,7 @@ const GroupsPage = () => {
             if (!allExpensesLoaded && expenses.length) {
               setLoading(true);
               try {
-                const res = await axiosInstance.get(
-                  `${API_URLS.fetchExpensesSettlements}/${selectedGroup?.group_id}`,
-                  {
-                    params: { pageSize, timestamp: timestampExpenses },
-                    withCredentials: true
-                  }
-                );
+                const res = await onGetExpensesSettlements({ pageSize, timestamp: timestampExpenses }, selectedGroup.group_id);
 
                 const expenses = res.data.data.sort(
                   (a: GroupExpenseData | GroupSettlementData, b: GroupExpenseData | GroupSettlementData) =>
@@ -436,11 +404,7 @@ const GroupsPage = () => {
   const handleAddExpensesOpen = () => setAddExpenseDialogOpen(true);
   const handleAcceptRejectRequest = async (conversationId: string, status: string) => {
     try {
-      const res = await axiosInstance.patch(
-        `${API_URLS.acceptRejectRequest}/${conversationId}`,
-        { status },
-        { withCredentials: true }
-      );
+      const res = await onAcceptRejectRequest(status, conversationId);
 
       if (res.data.success) {
         const acceptedRequest = groupInvites.find((request) => request.group_id === conversationId);
@@ -486,10 +450,7 @@ const GroupsPage = () => {
     setGroupDetailsOpen(false);
     if (group) {
       try {
-        const res = await axiosInstance.get(
-          `${API_URLS.group}/${group.group_id}`,
-          { withCredentials: true }
-        );
+        const res = await onGetGroupData(group.group_id);
 
         const filteredMembers = filterMembers(res.data.data);
         setGroupMembers(filteredMembers);
@@ -521,11 +482,7 @@ const GroupsPage = () => {
   const addExpense = async (expenseInfo: FormData) => {
     setLoaders((prev) => ({ ...prev, addExpense: true }));
     try {
-      const res = await axiosInstance.post<GroupExpenseResponse>(
-        `${API_URLS.addGroupExpense}/${selectedGroup?.group_id}`,
-        expenseInfo,
-        { withCredentials: true }
-      );
+      const res = await onAddExpense(expenseInfo, selectedGroup!.group_id);
 
       const debtorAmount = res.data.data.expenseParticipants.reduce(
         (acc: number, val: ExpenseParticipant) => acc + parseFloat(val.debtor_amount),
@@ -617,7 +574,7 @@ const GroupsPage = () => {
 
   const handleLeaveGroup = async (id: string) => {
     try {
-      await axiosInstance.delete(`${API_URLS.leaveGroup}/${id}`, { withCredentials: true });
+      await onLeaveGroup(id);
       const updatedGroupInvites = groupInvites.filter((group) => group.group_id !== id);
       setGroupInvites(updatedGroupInvites)
       const updatedGroups = groups.filter((group) => group.group_id !== id);

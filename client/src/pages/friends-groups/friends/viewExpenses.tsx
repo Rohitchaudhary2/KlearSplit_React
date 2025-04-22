@@ -4,12 +4,11 @@ import { Modal, DialogTitle, Box, Button, Divider } from "@mui/material"
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useEffect, useState } from "react";
-import axiosInstance from "../../../utils/axiosInterceptor";
-import { API_URLS } from "../../../constants/apiUrls";
 import { Expense, Friend } from "./index.model";
 import { format } from "date-fns";
 import AddExpense from "./addExpense";
 import { toast } from "sonner";
+import { onDeleteExpenseService, onGetExpenses, onUpdateExpenseService } from "./services";
 
 const ViewExpenses: React.FC<{
     open: boolean,
@@ -36,10 +35,7 @@ const ViewExpenses: React.FC<{
             const fetchExpenses = async () => {
                 const params = { fetchAll: true, timestamp: new Date().toISOString() };
                 try {
-                    const res = await axiosInstance.get(
-                        `${API_URLS.getExpenses}/${friend.conversation_id}`,
-                        { params, withCredentials: true }
-                    );
+                    const res = await onGetExpenses(params, friend.conversation_id);
 
                     setExpenses(res.data.data);
                 } catch (error) {
@@ -92,11 +88,7 @@ const ViewExpenses: React.FC<{
         }
         const handleAddExpense = async (expenseInfo: FormData) => {
             try {
-                const res = await axiosInstance.patch(
-                    `${API_URLS.updateExpense}/${friend.conversation_id}`,
-                    expenseInfo,
-                    { withCredentials: true }
-                );
+                const res = await onUpdateExpenseService(expenseInfo, friend.conversation_id);
 
                 const updatedExpenses = expenses.map((expense) => {
                     if(expense.friend_expense_id === res.data.data.friend_expense_id) {
@@ -115,13 +107,7 @@ const ViewExpenses: React.FC<{
         }
         const onDeleteExpense = async (expenseData: Expense) => {
             try {
-                await axiosInstance.delete(
-                    `${API_URLS.deleteExpense}/${friend.conversation_id}`,
-                    {
-                        data: { friend_expense_id: expenseData.friend_expense_id },
-                        withCredentials: true,
-                    }
-                );
+                await onDeleteExpenseService(expenseData.friend_expense_id, friend.conversation_id);
 
                 const updatedExpenses = expenses.filter((expense) => expense.friend_expense_id !== expenseData.friend_expense_id)
                 setExpenses(updatedExpenses);

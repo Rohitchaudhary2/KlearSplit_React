@@ -1,10 +1,9 @@
 import { Box, FormControl, MenuItem, Paper, Select, SelectChangeEvent, Stack, Typography } from "@mui/material"
 import { useEffect, useRef, useState } from "react"
 import { PieChart, BarChart, axisClasses } from '@mui/x-charts';
-import { API_URLS } from "../../constants/apiUrls";
 import classes from "./index.module.css"
-import axiosInstance from "../../utils/axiosInterceptor";
 import { toast } from "sonner";
+import { handleBalanceAmounts, handleCashFlowFriends, handleCashFlowGroups, handleExpensesCount, handleMonthlyExpenses } from "./services";
 
 interface PieChartData {
     id: number,
@@ -41,7 +40,7 @@ const DashboardPage = () => {
         };
         const getExpensesCount = async () => {
             try {
-                const data = await axiosInstance.get(API_URLS.expensesCount, { withCredentials: true });
+                const data = await handleExpensesCount();
 
                 setExpensesCount(data.data.data.map((value: number, index: number) => ({
                     id: index,
@@ -58,7 +57,7 @@ const DashboardPage = () => {
         }
         const getBalance = async () => {
             try {
-                const data = await axiosInstance.get(API_URLS.balanceAmounts, { withCredentials: true });
+                const data = await handleBalanceAmounts();
 
                 setBalanceAmounts(data.data.data.map((value: number, index: number) => ({
                     id: index,
@@ -79,7 +78,7 @@ const DashboardPage = () => {
         }
         const getCashFlowFriends = async () => {
             try {
-                const data = await axiosInstance.get(API_URLS.cashFlowFriends, { withCredentials: true });
+                const data = await handleCashFlowFriends();
 
                 const response: { amount: number; friend: string }[] = Object.values(data.data.data);
 
@@ -98,7 +97,7 @@ const DashboardPage = () => {
         }
         const getCashFlowGroups = async () => {
             try {
-                const data = await axiosInstance.get(API_URLS.cashFlowGroups, { withCredentials: true });
+                const data = await handleCashFlowGroups();
 
                 const response: { amount: number; group: string }[] = Object.values(data.data.data);
 
@@ -133,7 +132,7 @@ const DashboardPage = () => {
     useEffect(() => {
         const getMonthlyexpenses = async () => {
             try {
-                const data = await axiosInstance.post(API_URLS.monthlyExpenses, { year }, { withCredentials: true });
+                const data = await handleMonthlyExpenses(year);
                 setMonthlyExpenses(data.data.data);
             } catch (error) {
                 toast.error("Something went wrong, please try again later!");

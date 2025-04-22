@@ -8,8 +8,7 @@ import { useEffect, useState } from "react";
 import CreateGroup from "./createGroup";
 import Settlement from "./settlement";
 import { toast } from "sonner";
-import axiosInstance from "../../../utils/axiosInterceptor";
-import { API_URLS } from "../../../constants/apiUrls";
+import { onAddSettlement } from "./services";
 
 interface GroupDetailsProps {
     handleSettlement: (settlement: GroupSettlementData) => void
@@ -44,14 +43,11 @@ const GroupDetails: React.FC<GroupDetailsProps> = ({ handleSettlement, handleGro
     }
     const handleSettlementSubmit = async (settlementAmount: number) => {
         try {
-            const res = await axiosInstance.post(
-                `${API_URLS.addGroupSettlements}/${group.group_id}`,
-                {
-                    payer_id: payer?.group_membership_id,
-                    debtor_id: debtor?.group_membership_id,
-                    settlement_amount: settlementAmount
-                }
-            );
+            const res = await onAddSettlement({
+                payer_id: payer!.group_membership_id,
+                debtor_id: debtor!.group_membership_id,
+                settlement_amount: settlementAmount
+            }, group.group_id);
             const settlement = res.data.data;
 
             if (settlement.payer_id === currentMember?.group_membership_id) {

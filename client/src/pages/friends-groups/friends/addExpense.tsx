@@ -11,9 +11,8 @@ import { motion } from "framer-motion"
 import SplitType from "./splitType"
 import CustomDialog from "../../../components/base/customModal"
 import { Expense } from "./index.model"
-import axiosInstance from "../../../utils/axiosInterceptor"
-import { API_URLS } from "../../../constants/apiUrls"
 import { toast } from "sonner"
+import { onBulkAddExpenses } from "./services"
 
 const VisuallyHiddenInput = styled('input')`
   clip: rect(0 0 0 0);
@@ -153,11 +152,7 @@ const AddExpense: React.FC<{
             formData.append("file", selectedFile!, selectedFile!.name);
             formData.append("tableName", "friends_expenses");
             try {
-                const res = await axiosInstance.post(
-                  `${API_URLS.bulkAddExpenses}/${id}`,
-                  formData,
-                  { withCredentials: true }
-                );
+                const res = await onBulkAddExpenses(formData, id);
               
                 toast.success("Expenses added successfully!");
                 handleBulkAddExpenses!(res.data.data);

@@ -6,9 +6,8 @@ import classes from './index.module.css';
 import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
 import { Friend } from "./index.model";
-import axiosInstance from "../../../utils/axiosInterceptor";
-import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
+import { onCreatePayment } from "./services";
 
 const Settlement: React.FC<{
     open: boolean,
@@ -72,13 +71,13 @@ const Settlement: React.FC<{
     const payWithPayPal = async () => {
         setLoader(true);
         try {
-            const res = await axiosInstance.post(`${API_URLS.createPayment}`, {
+            const res = await onCreatePayment({
                 amount: settlementAmount,
                 id: selectedFriend.conversation_id,
                 payerId,
                 debtorId,
                 type: "friends"
-            });
+            })
 
             window.location.href = res.data.data;
         } catch (error) {

@@ -2,10 +2,9 @@ import { ModalDialog } from "@mui/joy"
 import { Modal, DialogTitle, Box, TextField, Typography, Avatar, Divider, List, ListItem, ListItemAvatar, ListItemButton, ListItemText } from "@mui/material"
 import { useEffect, useState } from "react"
 import Button from '@mui/joy/Button';
-import axiosInstance from "../../../utils/axiosInterceptor";
-import { API_URLS } from "../../../constants/apiUrls";
 import { toast } from "sonner";
 import { Friend } from "./index.model";
+import { onAddFriend, onGetFriends, onGetUsers } from "./services";
 
 const AddFriend: React.FC<{
     open: boolean,
@@ -34,7 +33,7 @@ const AddFriend: React.FC<{
 
                 const getUsers = async () => {
                     try {
-                        const filteredUsers = await axiosInstance.get(`${API_URLS.getUsers}/${inputTerm}`, { withCredentials: true });
+                        const filteredUsers = await onGetUsers(inputTerm);
                         setUsers(filteredUsers.data.data);
                     } catch (error) {
                         console.error("Error fetching users", error);
@@ -57,16 +56,9 @@ const AddFriend: React.FC<{
     const handleAddFriend = async () => {
         setAddFriendLoader(true);
         try {
-            await axiosInstance.post(
-                `${API_URLS.addFriend}`,
-                { email: inputTerm },
-                { withCredentials: true }
-            );
+            await onAddFriend(inputTerm);
 
-            const requests = await axiosInstance.get(`${API_URLS.getFriends}`, {
-                params: { status: "PENDING" },
-                withCredentials: true
-            });
+            const requests = await onGetFriends({ status: "PENDING" });
 
             handleAddFriendRequests(requests.data.data);
             handleAddFriendClose();

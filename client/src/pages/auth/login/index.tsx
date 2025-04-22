@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { login } from "../../../store/authSlice";
 import { API_URLS } from "../../../constants/apiUrls";
-import axiosInstance from "../../../utils/axiosInterceptor";
+import { handleLogin } from "../services";
 
 const LoginPage = () => {
     const navigate = useNavigate();
@@ -40,7 +40,7 @@ const LoginPage = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await axiosInstance.post(API_URLS.login, loginInfo, { withCredentials: true });
+            const res = await handleLogin(loginInfo);
 
             // Successful login
             dispatch(login(res.data.data));

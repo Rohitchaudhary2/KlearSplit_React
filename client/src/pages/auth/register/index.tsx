@@ -7,7 +7,8 @@ import { useDispatch } from "react-redux";
 import { login } from "../../../store/authSlice";
 import CustomDialog from "../../../components/base/customModal";
 import { API_URLS } from "../../../constants/apiUrls";
-import axiosInstance from "../../../utils/axiosInterceptor";
+// import axiosInstance from "../../../utils/axiosInterceptor";
+import { otpSubmission, signup } from "../services";
 
 const RegisterPage = () => {
     const navigate = useNavigate();
@@ -73,7 +74,7 @@ const RegisterPage = () => {
         switch (stage) {
             case "signup":
                 try {
-                    const res = await axiosInstance.post(API_URLS.verify, signupInfo);
+                    const res = await signup(signupInfo);
 
                     // Successful verification
                     setStage("otp"); // Proceed to the next stage
@@ -84,7 +85,7 @@ const RegisterPage = () => {
                 break;
             case "otp": {
                 try {
-                    const res = await axiosInstance.post(API_URLS.register, { ...signupInfo, otp }, { withCredentials: true });
+                    const res = await otpSubmission({...signupInfo, otp});
 
                     // Successful registration
                     dispatch(login(res.data.data)); // Store user data in the state

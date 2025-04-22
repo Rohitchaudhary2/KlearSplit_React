@@ -6,9 +6,8 @@ import classes from './index.module.css';
 import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
 import { GroupMemberData } from "./index.model";
-import { API_URLS } from "../../../constants/apiUrls";
-import axiosInstance from "../../../utils/axiosInterceptor";
 import { toast } from "sonner";
+import { onCreatePayment } from "./services";
 
 const Settlement: React.FC<{
     open: boolean,
@@ -39,16 +38,13 @@ const Settlement: React.FC<{
     const payWithPayPal = async () => {
         setLoader(true);
         try {
-            const res = await axiosInstance.post(
-                `${API_URLS.createPayment}`,
-                {
-                    amount: settlementAmount,
-                    id: payer.group_id,
-                    payerId: payer.group_membership_id,
-                    debtorId: debtor.group_membership_id,
-                    type: "groups"
-                }
-            );
+            const res = await onCreatePayment({
+                amount: settlementAmount,
+                id: payer.group_id,
+                payerId: payer.group_membership_id,
+                debtorId: debtor.group_membership_id,
+                type: "groups"
+            })
 
             window.location.href = res.data.data;
         } catch (error) {
