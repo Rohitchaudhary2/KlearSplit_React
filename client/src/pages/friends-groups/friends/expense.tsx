@@ -11,20 +11,9 @@ const ExpenseItem: React.FC<{
   name: string;
 }> = ({ expense, isCurrentUserPayer, imageUrl, currentUserImageUrl, name }) => {
   const startsWithPrefix = (id: string, prefix: string) => id.startsWith(prefix);
-  const onRetryExpenseAddition = (id: string) => {
-    console.log(id);
-  }
   return (
     <li className={`flex mb-1 px-2 ${isCurrentUserPayer ? "justify-end" : "justify-start"}`}>
-      {/* Avatar for other user */}
       {!isCurrentUserPayer && (
-        // <img
-        //   src={imageUrl || "/profile.png"}
-        //   alt="avatar"
-        //   className="rounded-full inline-flex self-end mr-3 shadow-md"
-        //   width="40"
-        //   height="40"
-        // />
         <ListItemAvatar className="rounded-full inline-flex self-end mr-3 shadow-md" sx={{ minWidth: 32 }}>
             <Avatar alt="Avatar" src={imageUrl ?? `assets/image.png`} sx={{ width: 40, height: 40 }} />
           </ListItemAvatar>
@@ -39,7 +28,7 @@ const ExpenseItem: React.FC<{
           </div>
         ) : startsWithPrefix(expense.friend_expense_id, "error") ? (
           <div className="flex items-center justify-around p-3 w-[15vw] h-[10vh] text-black bg-red-400 rounded-2xl">
-            <button className="btn btn-sm" onClick={() => onRetryExpenseAddition(expense.friend_expense_id)}>
+            <button className="btn btn-sm">
               Retry
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="inline ml-1" viewBox="0 0 16 16">
                 <path d="M11 5.466V4H5a4 4 0 0 0-3.584 5.777.5.5 0 1 1-.896.446A5 5 0 0 1 5 3h6V1.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384l-2.36 1.966a.25.25 0 0 1-.41-.192m3.81.086a.5.5 0 0 1 .67.225A5 5 0 0 1 11 13H5v1.466a.25.25 0 0 1-.41.192l-2.36-1.966a.25.25 0 0 1 0-.384l2.36-1.966a.25.25 0 0 1 .41.192V12h6a4 4 0 0 0 3.585-5.777.5.5 0 0 1 .225-.67Z" />
@@ -77,15 +66,7 @@ const ExpenseItem: React.FC<{
         )}
       </div>
 
-      {/* Avatar for current user */}
       {isCurrentUserPayer && (
-        // <img
-        //   src={currentUserImageUrl || "/profile.png"}
-        //   alt="avatar"
-        //   className="rounded-full inline-flex self-end ml-3 shadow-md"
-        //   width="40"
-        //   height="40"
-        // />
         <ListItemAvatar className="rounded-full inline-flex self-end ml-3 shadow-md" sx={{ minWidth: 32 }}>
             <Avatar alt="Avatar" src={currentUserImageUrl ?? `assets/image.png`} sx={{ width: 40, height: 40 }} />
           </ListItemAvatar>

@@ -37,20 +37,20 @@ const Settlement: React.FC<{
     }
     const payWithPayPal = async () => {
         setLoader(true);
-        try {
-            const res = await onCreatePayment({
-                amount: settlementAmount,
-                id: payer.group_id,
-                payerId: payer.group_membership_id,
-                debtorId: debtor.group_membership_id,
-                type: "groups"
-            })
+        const res = await onCreatePayment({
+            amount: settlementAmount,
+            id: payer.group_id,
+            payerId: payer.group_membership_id,
+            debtorId: debtor.group_membership_id,
+            type: "groups"
+        })
 
-            window.location.href = res.data.data;
-        } catch (error) {
+        if (!res) {
             setLoader(false);
-            toast.error("Failed to create payment, please try again later");
+            return;
         }
+
+        window.location.href = res.data.data;
     }
     return (
         <Modal open={open} onClose={() => handleSettlementClose()}>

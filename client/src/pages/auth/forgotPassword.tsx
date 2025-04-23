@@ -46,25 +46,19 @@ const ForgotPassword = () => {
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
         if (errors.email) return;
-        try {
-            await verifyForgotPassword(email);
-            toast.success("OTP sent to your email");
-            setStep(2);
-        } catch (error) {
-            toast.error("Failed to send OTP");
-        }
+        const res = await verifyForgotPassword(email);
+        if (!res) return;
+        toast.success("OTP sent to your email");
+        setStep(2);
     };
 
     const handleVerifyOtp = async (e: React.FormEvent) => {
         e.preventDefault();
         if (errors.otp) return;
-        try {
-            await forgotPassword(email, otp);
-            toast.success("OTP verified");
-            navigate("/login");
-        } catch (error) {
-            toast.error("Invalid OTP");
-        }
+        const res = await forgotPassword(email, otp);
+        if (!res) return;
+        toast.success("OTP verified");
+        navigate("/login");
     };
 
     return (
@@ -73,76 +67,76 @@ const ForgotPassword = () => {
                 <div className="md:col-span-5 col-span-10 h-full bg-[#D1F8EF] shadow-2xl rounded-lg md:rounded-l-lg md:rounded-r-none p-6 items-center">
                     <Typography variant="h4" align="center" color="primary" className="pb-7" sx={{ fontWeight: 700 }}>KLEARSPLIT</Typography>
                     <form onSubmit={step === 1 ? handleSendOtp : handleVerifyOtp} className="w-full py-4">
-                    <Stack spacing={2}>
-                        {/* Email Field */}
-                        <TextField
-                            label="Email"
-                            required
-                            variant="outlined"
-                            name="email"
-                            value={email}
-                            onChange={handleInputChange}
-                            error={!!errors.email}
-                            helperText={errors.email}
-                            fullWidth
-                            InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <Person />
-                                    </InputAdornment>
-                                ),
-                            }}
-                        />
-
-                        {step === 2 && (
+                        <Stack spacing={2}>
+                            {/* Email Field */}
                             <TextField
-                                label="OTP"
+                                label="Email"
                                 required
                                 variant="outlined"
-                                name="otp"
-                                value={otp}
+                                name="email"
+                                value={email}
                                 onChange={handleInputChange}
-                                error={!!errors.otp}
-                                helperText={errors.otp}
+                                error={!!errors.email}
+                                helperText={errors.email}
                                 fullWidth
                                 InputProps={{
                                     startAdornment: (
                                         <InputAdornment position="start">
-                                            <Lock />
+                                            <Person />
                                         </InputAdornment>
                                     ),
                                 }}
                             />
-                        )}
 
-                        {/* Submit Button */}
-                        <Button variant="contained" type="submit" disabled={isForgotPasswordDisabled()} fullWidth>
-                            {step === 1 ? "Send OTP" : "Verify OTP"}
-                        </Button>
+                            {step === 2 && (
+                                <TextField
+                                    label="OTP"
+                                    required
+                                    variant="outlined"
+                                    name="otp"
+                                    value={otp}
+                                    onChange={handleInputChange}
+                                    error={!!errors.otp}
+                                    helperText={errors.otp}
+                                    fullWidth
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <Lock />
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            )}
 
-                        {/* Back to Login */}
-                        <div className="text-right">
-                            <Link to="/login" className="text-blue-600 hover:underline">
-                                Back to Login
-                            </Link>
-                        </div>
+                            {/* Submit Button */}
+                            <Button variant="contained" type="submit" disabled={isForgotPasswordDisabled()} fullWidth>
+                                {step === 1 ? "Send OTP" : "Verify OTP"}
+                            </Button>
 
-                        {/* Divider */}
-                        <div className="flex items-center">
-                            <div className="flex-grow border-t border-gray-400"></div>
-                            <span className="mx-2 text-gray-600">OR</span>
-                            <div className="flex-grow border-t border-gray-400"></div>
-                        </div>
+                            {/* Back to Login */}
+                            <div className="text-right">
+                                <Link to="/login" className="text-blue-600 hover:underline">
+                                    Back to Login
+                                </Link>
+                            </div>
 
-                        {/* Register Link */}
-                        <div className="text-center">
-                            Don't have an account?{" "}
-                            <Link to="/register" className="text-blue-400 hover:underline">
-                                Register now
-                            </Link>
-                        </div>
-                    </Stack>
-                </form>
+                            {/* Divider */}
+                            <div className="flex items-center">
+                                <div className="flex-grow border-t border-gray-400"></div>
+                                <span className="mx-2 text-gray-600">OR</span>
+                                <div className="flex-grow border-t border-gray-400"></div>
+                            </div>
+
+                            {/* Register Link */}
+                            <div className="text-center">
+                                Don't have an account?{" "}
+                                <Link to="/register" className="text-blue-400 hover:underline">
+                                    Register now
+                                </Link>
+                            </div>
+                        </Stack>
+                    </form>
                 </div>
                 <div className="col-span-5 h-full bg-[#3674B5] rounded-r-lg shadow-2xl md:w-full h-full hidden md:block flex items-center content-center bg-[#3674B5] ">
                     <div className="text-white px-4 py-5 md:px-10 md:py-12 mx-4">

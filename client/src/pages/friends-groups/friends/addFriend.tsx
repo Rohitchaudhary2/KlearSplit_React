@@ -32,14 +32,10 @@ const AddFriend: React.FC<{
                 setLoading(true);
 
                 const getUsers = async () => {
-                    try {
-                        const filteredUsers = await onGetUsers(inputTerm);
-                        setUsers(filteredUsers.data.data);
-                    } catch (error) {
-                        console.error("Error fetching users", error);
-                    } finally {
-                        setLoading(false);
-                    }
+                    const filteredUsers = await onGetUsers(inputTerm);
+                    setLoading(false);
+                    if (!filteredUsers) return;
+                    setUsers(filteredUsers.data.data);
                 };
 
                 getUsers();
@@ -55,19 +51,19 @@ const AddFriend: React.FC<{
     }
     const handleAddFriend = async () => {
         setAddFriendLoader(true);
-        try {
-            await onAddFriend(inputTerm);
-
-            const requests = await onGetFriends({ status: "PENDING" });
-
-            handleAddFriendRequests(requests.data.data);
-            handleAddFriendClose();
-            toast.success("Request sent successfully");
-        } catch (error) {
-            toast.error("Failed to send friend request, please try again later");
-        } finally {
+        const res = await onAddFriend(inputTerm);
+        if (!res) {
             setAddFriendLoader(false);
+            return;
         }
+
+        const requests = await onGetFriends({ status: "PENDING" });
+        setAddFriendLoader(false);
+        if (!requests) return;
+
+        handleAddFriendRequests(requests.data.data);
+        handleAddFriendClose();
+        toast.success("Request sent successfully");
     }
     return (
         <Modal open={open} onClose={handleAddFriendClose}>

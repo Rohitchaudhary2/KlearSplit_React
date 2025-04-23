@@ -6,7 +6,6 @@ import classes from './index.module.css';
 import { RootState } from "../../../store";
 import { useSelector } from "react-redux";
 import { Friend } from "./index.model";
-import { toast } from "sonner";
 import { onCreatePayment } from "./services";
 
 const Settlement: React.FC<{
@@ -60,7 +59,7 @@ const Settlement: React.FC<{
     const onChange = (value: string) => {
         if (isNaN(parseFloat(value))) value = "0"
         setSettlementAmount(parseFloat(value) ?? 0)
-        if(parseFloat(value) < 0.1 || parseFloat(value) > totalAmount) {
+        if (parseFloat(value) < 0.1 || parseFloat(value) > totalAmount) {
             setError(`Amount must be between 0.1 and ${totalAmount}.`)
         } else setError("")
     };
@@ -70,20 +69,19 @@ const Settlement: React.FC<{
     }
     const payWithPayPal = async () => {
         setLoader(true);
-        try {
-            const res = await onCreatePayment({
-                amount: settlementAmount,
-                id: selectedFriend.conversation_id,
-                payerId,
-                debtorId,
-                type: "friends"
-            })
-
-            window.location.href = res.data.data;
-        } catch (error) {
+        const res = await onCreatePayment({
+            amount: settlementAmount,
+            id: selectedFriend.conversation_id,
+            payerId,
+            debtorId,
+            type: "friends"
+        })
+        if (!res) {
             setLoader(false);
-            toast.error("Failed to initiate payment, please try again later");
+            return;
         }
+
+        window.location.href = res.data.data;
     }
     return (
         <Modal open={open} onClose={() => handleSettlementClose()}>

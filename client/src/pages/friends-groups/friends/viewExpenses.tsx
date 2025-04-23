@@ -34,15 +34,11 @@ const ViewExpenses: React.FC<{
             setLoading(true);
             const fetchExpenses = async () => {
                 const params = { fetchAll: true, timestamp: new Date().toISOString() };
-                try {
-                    const res = await onGetExpenses(params, friend.conversation_id);
+                const res = await onGetExpenses(params, friend.conversation_id);
+                setLoading(false);
+                if (!res) return;
 
-                    setExpenses(res.data.data);
-                } catch (error) {
-                    toast.error("Failed to fetch expenses, please try again later");
-                } finally {
-                    setLoading(false);
-                }
+                setExpenses(res.data.data);
             }
             fetchExpenses()
         }, [open])
@@ -87,36 +83,30 @@ const ViewExpenses: React.FC<{
             setExpenseToBeUpdated(expense);
         }
         const handleAddExpense = async (expenseInfo: FormData) => {
-            try {
-                const res = await onUpdateExpenseService(expenseInfo, friend.conversation_id);
+            const res = await onUpdateExpenseService(expenseInfo, friend.conversation_id);
+            if (!res) return;
 
-                const updatedExpenses = expenses.map((expense) => {
-                    if(expense.friend_expense_id === res.data.data.friend_expense_id) {
-                        return res.data.data;
-                    }
-                    return expense;
-                })
-                setExpenses(updatedExpenses);
+            const updatedExpenses = expenses.map((expense) => {
+                if (expense.friend_expense_id === res.data.data.friend_expense_id) {
+                    return res.data.data;
+                }
+                return expense;
+            })
+            setExpenses(updatedExpenses);
 
-                handleUpdateExpense(res.data.data);
-                toast.success("Expense updated successfully!");
-            } catch (error) {
-                toast.error("Failed to update expense, please try again later");
-            }
+            handleUpdateExpense(res.data.data);
+            toast.success("Expense updated successfully!");
             handleAddExpensesClose();
         }
         const onDeleteExpense = async (expenseData: Expense) => {
-            try {
-                await onDeleteExpenseService(expenseData.friend_expense_id, friend.conversation_id);
+            const res = await onDeleteExpenseService(expenseData.friend_expense_id, friend.conversation_id);
+            if (!res) return;
 
-                const updatedExpenses = expenses.filter((expense) => expense.friend_expense_id !== expenseData.friend_expense_id)
-                setExpenses(updatedExpenses);
+            const updatedExpenses = expenses.filter((expense) => expense.friend_expense_id !== expenseData.friend_expense_id)
+            setExpenses(updatedExpenses);
 
-                handleDeleteExpense(expenseData);
-                toast.success("Expense deleted successfully!");
-            } catch (error) {
-                toast.error("Failed to delete expense, please try again later");
-            }
+            handleDeleteExpense(expenseData);
+            toast.success("Expense deleted successfully!");
         }
         const handleAddExpensesClose = () => {
             setExpenseToBeUpdated(undefined);

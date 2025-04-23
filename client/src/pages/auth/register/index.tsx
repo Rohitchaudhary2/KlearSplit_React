@@ -10,6 +10,14 @@ import { API_URLS } from "../../../constants/apiUrls";
 // import axiosInstance from "../../../utils/axiosInterceptor";
 import { otpSubmission, signup } from "../services";
 
+interface SignupInfo {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    otp?: string;
+}
+
 const RegisterPage = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -71,9 +79,11 @@ const RegisterPage = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const data = {};
+        Object.entries(signupInfo).forEach(([key, value]) => {if(value) Object.assign(data, {[key]: value})});
         switch (stage) {
             case "signup":
-                const res = await signup(signupInfo);
+                const res = await signup(data as SignupInfo);
                 if (!res) return;
 
                 // Successful verification
@@ -81,7 +91,7 @@ const RegisterPage = () => {
                 toast.success(res.data.message); // Show success message
                 break;
             case "otp": {
-                const res = await otpSubmission({ ...signupInfo, otp });
+                const res = await otpSubmission({ ...data as SignupInfo, otp });
                 if (!res) return;
 
                 // Successful registration

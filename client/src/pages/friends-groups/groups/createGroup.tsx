@@ -88,47 +88,44 @@ const CreateGroup: React.FC<CreateGroupProps> = ({
         formData.append("group", JSON.stringify(groupDetails));
         formData.append("membersData", JSON.stringify(membersData));
         if (image) formData.append("image", image);
-        try {
-            if (group) {
-                const formData = new FormData();
-                formData.append("group_name", groupName as string);
-                formData.append("group_description", groupDescription as string);
-                if (image) formData.append("image", image);
-                const res = await onUpdateGroup(formData, group.group_id)
-                handleUpdateGroup!(res.data.data);
-                toast.success("Group Updated successfully!")
-                handleClose()
-                return;
-            }
-            const res = await onCreateGroup(formData);
-            const groupRes = res.data.data
-            toast.success("Group created successfully");
-            handleCreateGroup!({
-                ...groupRes,
-                status: "ACCEPTED",
-                role: "CREATOR",
-                has_archived: false,
-                has_blocked: false,
-                balance_amount: "0",
-            } as GroupData)
-            if (setGroups) {
-                setGroups((prevGroups) => [
-                    {
-                        ...groupRes,
-                        status: "ACCEPTED",
-                        role: "CREATOR",
-                        has_archived: false,
-                        has_blocked: false,
-                        balance_amount: "0",
-                    } as GroupData,
-                    ...prevGroups,
-                ]);
-            }
-            // Optionally, you can also close the dialog here
-            handleClose();
-        } catch {
-            toast.error("Failed to create group");
+        if (group) {
+            const formData = new FormData();
+            formData.append("group_name", groupName as string);
+            formData.append("group_description", groupDescription as string);
+            if (image) formData.append("image", image);
+            const res = await onUpdateGroup(formData, group.group_id)
+            if (!res) return;
+            handleUpdateGroup!(res.data.data);
+            toast.success("Group Updated successfully!")
+            handleClose()
+            return;
         }
+        const res = await onCreateGroup(formData);
+        if (!res) return;
+        const groupRes = res.data.data
+        toast.success("Group created successfully");
+        handleCreateGroup!({
+            ...groupRes,
+            status: "ACCEPTED",
+            role: "CREATOR",
+            has_archived: false,
+            has_blocked: false,
+            balance_amount: "0",
+        } as GroupData)
+        if (setGroups) {
+            setGroups((prevGroups) => [
+                {
+                    ...groupRes,
+                    status: "ACCEPTED",
+                    role: "CREATOR",
+                    has_archived: false,
+                    has_blocked: false,
+                    balance_amount: "0",
+                } as GroupData,
+                ...prevGroups,
+            ]);
+        }
+        handleClose();
         // Reset state after submission
         setGroupName("");
         setGroupDescription("");

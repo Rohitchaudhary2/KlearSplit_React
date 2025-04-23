@@ -43,34 +43,33 @@ const ViewExpenses: React.FC<{
             setLoading(true);
             const fetchExpenses = async () => {
                 const params = { fetchAll: true, timestamp: new Date().toISOString() };
-                try {
-                    const res = await axiosInstance.get(
-                        `${API_URLS.fetchExpensesSettlements}/${group.group_id}`,
-                        { params, withCredentials: true }
-                    );
-
-                    const expensesWithDetails = res.data.data.map((expense: GroupExpenseData | GroupSettlementData) => {
-                        if (expense.payer_id === currentMember?.group_membership_id) {
-                            expense.payer = getFullNameAndImage(currentMember);
-                        } else {
-                            const payer = groupMembers!.find((member) => expense.payer_id === member.group_membership_id);
-                            expense.payer = getFullNameAndImage(payer);
-                        }
-
-                        if ("group_settlement_id" in expense) {
-                            const debtor = groupMembers!.find((member) => expense.debtor_id === member.group_membership_id);
-                            expense.debtor = getFullNameAndImage(debtor);
-                        }
-
-                        return expense;
-                    });
-
-                    setExpenses(expensesWithDetails);
-                } catch (error) {
-                    toast.error("Failed to fetch expenses and settlements, please try again later");
-                } finally {
+                const res = await axiosInstance.get(
+                    `${API_URLS.fetchExpensesSettlements}/${group.group_id}`,
+                    { params, withCredentials: true }
+                );
+                if (!res) {
                     setLoading(false);
+                    return;
                 }
+
+                const expensesWithDetails = res.data.data.map((expense: GroupExpenseData | GroupSettlementData) => {
+                    if (expense.payer_id === currentMember?.group_membership_id) {
+                        expense.payer = getFullNameAndImage(currentMember);
+                    } else {
+                        const payer = groupMembers!.find((member) => expense.payer_id === member.group_membership_id);
+                        expense.payer = getFullNameAndImage(payer);
+                    }
+
+                    if ("group_settlement_id" in expense) {
+                        const debtor = groupMembers!.find((member) => expense.debtor_id === member.group_membership_id);
+                        expense.debtor = getFullNameAndImage(debtor);
+                    }
+
+                    return expense;
+                });
+
+                setExpenses(expensesWithDetails);
+                setLoading(false);
             }
             fetchExpenses()
         }, [])
@@ -126,71 +125,64 @@ const ViewExpenses: React.FC<{
             setExpenseToBeUpdated(undefined);
         }
         const handleAddExpense = async (expense: FormData) => {
-            try {
-                expense.append("group_expense_id", expenseToBeUpdated!.group_expense_id);
+            expense.append("group_expense_id", expenseToBeUpdated!.group_expense_id);
 
-                const res = await axiosInstance.patch<GroupExpenseResponse>(
-                    `${API_URLS.updateGroupExpense}/${group.group_id}`,
-                    expense,
-                    { withCredentials: true }
-                );
-                handleUpdateExpense(res.data.data, expenseToBeUpdated!);
-                const debtorAmount = res.data.data.expenseParticipants.reduce((acc: number, val) => {
-                    return acc += +val.debtor_amount;
-                  }, 0)
-                  
-                  Object.assign(res.data.data.expense, {"total_debt_amount": debtorAmount});
-                  if (res.data.data.expense.payer_id === currentMember?.group_membership_id) {
-                    res.data.data.expense.payer = getFullNameAndImage(currentMember);
-                  } else {
-                    const payer = groupMembers!.find(
-                      (member) => res.data.data.expense.payer_id === member.group_membership_id
-                    );
-                    res.data.data.expense.payer = getFullNameAndImage(payer);
-                  }
-                const updatedExpenses = expenses.map((expense) => {
-                    if("group_expense_id" in expense) {
-                        return expense.group_expense_id === res.data.data.expense.group_expense_id ? res.data.data.expense : expense;
-                    }
-                    return expense;
-                })
-                setExpenses(updatedExpenses);
-
-                toast.success("Expense updated successfully!");
-            } catch (error) {
-                toast.error("Failed to update expense, please try again later");
-            } finally {
-                setExpenseToBeUpdated(undefined); // Clears the expense to be updated in either case (success or error)
+            const res = await axiosInstance.patch<GroupExpenseResponse>(
+                `${API_URLS.updateGroupExpense}/${group.group_id}`,
+                expense,
+                { withCredentials: true }
+            );
+            if (!res) {
+                setExpenseToBeUpdated(undefined);
+                return;
             }
+            handleUpdateExpense(res.data.data, expenseToBeUpdated!);
+            const debtorAmount = res.data.data.expenseParticipants.reduce((acc: number, val) => {
+                return acc += +val.debtor_amount;
+            }, 0)
+
+            Object.assign(res.data.data.expense, { "total_debt_amount": debtorAmount });
+            if (res.data.data.expense.payer_id === currentMember?.group_membership_id) {
+                res.data.data.expense.payer = getFullNameAndImage(currentMember);
+            } else {
+                const payer = groupMembers!.find(
+                    (member) => res.data.data.expense.payer_id === member.group_membership_id
+                );
+                res.data.data.expense.payer = getFullNameAndImage(payer);
+            }
+            const updatedExpenses = expenses.map((expense) => {
+                if ("group_expense_id" in expense) {
+                    return expense.group_expense_id === res.data.data.expense.group_expense_id ? res.data.data.expense : expense;
+                }
+                return expense;
+            })
+            setExpenses(updatedExpenses);
+
+            toast.success("Expense updated successfully!");
+            setExpenseToBeUpdated(undefined);
         }
         const onUpdateExpense = (expense: GroupExpenseData) => {
             setExpenseToBeUpdated(expense);
         }
         const onDeleteExpense = async (expenseData: GroupExpenseData) => {
-            // const isExpense = "group_expense_id" in expense;
-            // const url = isExpense ? API_URLS.deleteGroupExpense : API_URLS.deleteGroupSettlement;
-            // const data = isExpense ? { group_expense_id: expense.group_expense_id } : { group_settlement_expense_id: expense.group_settlement_id };
-            try {
-                await axiosInstance.delete(
-                    `${API_URLS.deleteGroupExpense}/${group.group_id}`,
-                    {
-                        data: { group_expense_id: expenseData.group_expense_id },
-                        withCredentials: true
-                    }
-                );
-                handleDeleteExpense(expenseData)
-                const updatedExpenses = expenses.filter((expense) => {
-                    if("group_expense_id" in expense) {
-                        return expense.group_expense_id !== expenseData.group_expense_id;
-                    }
-                    return true;
-                })
-                setExpenses(updatedExpenses);
+            const res = await axiosInstance.delete(
+                `${API_URLS.deleteGroupExpense}/${group.group_id}`,
+                {
+                    data: { group_expense_id: expenseData.group_expense_id },
+                    withCredentials: true
+                }
+            );
+            if (!res) return;
+            handleDeleteExpense(expenseData)
+            const updatedExpenses = expenses.filter((expense) => {
+                if ("group_expense_id" in expense) {
+                    return expense.group_expense_id !== expenseData.group_expense_id;
+                }
+                return true;
+            })
+            setExpenses(updatedExpenses);
 
-                toast.success("Expense deleted successfully!");
-            } catch (error) {
-                toast.error("Failed to delete expense, please try again later");
-            }
+            toast.success("Expense deleted successfully!");
         }
         return (
             <>

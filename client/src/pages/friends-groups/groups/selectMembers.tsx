@@ -44,14 +44,10 @@ const SelectMembersDialog: React.FC<Props> = ({
     debounce(async (q: string) => {
       if (!q.trim()) return setSearchResults([]);
       setLoading(true);
-      try {
-        const results = await onGetUsers(q);
-        setSearchResults(results.data.data);
-      } catch (err) {
-        setSearchResults([]);
-      } finally {
-        setLoading(false);
-      }
+      const results = await onGetUsers(q);
+      setLoading(false);
+      if (!results) return;
+      setSearchResults(results.data.data);
     }, 500),
     []
   );
@@ -101,13 +97,13 @@ const SelectMembersDialog: React.FC<Props> = ({
     return membersData;
   };
 
-  const handleSave = async() => {
-    if(groupId) {
+  const handleSave = async () => {
+    if (groupId) {
       const membersData = handleMembersData();
-        const addedMembers = await onAddMembers({ membersData, group_id: groupId })
-        handleAddMembers!(addedMembers.data.data);
-        handleClose();
-        toast.success("Members added successfully to the group!");
+      const addedMembers = await onAddMembers({ membersData, group_id: groupId })
+      handleAddMembers!(addedMembers.data.data);
+      handleClose();
+      toast.success("Members added successfully to the group!");
       return;
     }
     onSave!(members);
@@ -213,7 +209,7 @@ const SelectMembersDialog: React.FC<Props> = ({
                       className="ml-2"
                       size="small"
                     >
-                      <Close className="text-red-500"/>
+                      <Close className="text-red-500" />
                     </IconButton>
                   </div>
                 ))}

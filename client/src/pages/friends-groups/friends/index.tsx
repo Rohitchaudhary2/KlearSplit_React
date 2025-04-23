@@ -111,28 +111,18 @@ const Friendspage = () => {
   useEffect(() => {
     const getFriendRequests = async () => {
       setLoaders((prev) => ({ ...prev, friendRequests: true }))
-      try {
-        const res = await onGetFriends({status: 'PENDING'});
-        setFriendRequests(res.data.data);
-
-      } catch (error) {
-        toast.error("Something went wrong, please try again later!");
-      } finally {
-        setLoaders((prev) => ({ ...prev, friendRequests: false }));
-      }
+      const res = await onGetFriends({ status: 'PENDING' });
+      setLoaders((prev) => ({ ...prev, friendRequests: false }));
+      if (!res) return;
+      setFriendRequests(res.data.data);
     }
     const friends = async () => {
       setLoaders((prev) => ({ ...prev, friends: true }));
-      try {
-        const res = await onGetFriends({ status: "ACCEPTED" });
+      const res = await onGetFriends({ status: "ACCEPTED" });
+      setLoaders((prev) => ({ ...prev, friends: false }));
+      if (!res) return;
 
-        setFriends(res.data.data);
-
-      } catch (error) {
-        toast.error("Something went wrong, please try again later!");
-      } finally {
-        setLoaders((prev) => ({ ...prev, friends: false }));
-      }
+      setFriends(res.data.data);
     }
     getFriendRequests();
     friends();
@@ -154,36 +144,34 @@ const Friendspage = () => {
       const fetchAllData = async () => {
         setLoading(() => true);
 
-        try {
-          const [messagesRes, expensesRes, combinedRes] = await Promise.all([
-            onGetMessages({ pageSize, timestamp: timestampMessages }, selectedFriend.conversation_id),
-            onGetExpenses({ pageSize, timestamp: timestampExpenses }, selectedFriend.conversation_id),
-            onGetCombined({ pageSize, timestamp: timestampCombined }, selectedFriend.conversation_id)
-          ]);
+        const [messagesRes, expensesRes, combinedRes] = await Promise.all([
+          onGetMessages({ pageSize, timestamp: timestampMessages }, selectedFriend.conversation_id),
+          onGetExpenses({ pageSize, timestamp: timestampExpenses }, selectedFriend.conversation_id),
+          onGetCombined({ pageSize, timestamp: timestampCombined }, selectedFriend.conversation_id)
+        ]);
 
-          // Handle messages
-          const messages = sortBycreatedAt(messagesRes.data.data);
-          if (messages.length < 20) setAllMessagesLoaded(true);
-          if (messages.length) setTimestampMessages(messages[0].createdAt);
-          setMessages(messages as Message[]);
-
-          // Handle expenses
-          const expenses = sortBycreatedAt(expensesRes.data.data);
-          if (expenses.length < 20) setAllExpensesLoaded(true);
-          if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
-          setExpenses(expenses as Expense[]);
-
-          // Handle combined
-          const combined = sortBycreatedAt(combinedRes.data.data);
-          if (combined.length < 20) setAllCombinedLoaded(true);
-          if (combined.length) setTimestampCombined(combined[0].createdAt);
-          setCombined(combined);
-
-        } catch (error) {
-          toast.error("Error fetching data, please try again later")
-        } finally {
-          setLoading(() => false); // Only done when all above are finished (or errored)
+        if (!messagesRes || !expensesRes || !combinedRes) {
+          setLoading(() => false);
+          return;
         }
+        // Handle messages
+        const messages = sortBycreatedAt(messagesRes.data.data);
+        if (messages.length < 20) setAllMessagesLoaded(true);
+        if (messages.length) setTimestampMessages(messages[0].createdAt);
+        setMessages(messages as Message[]);
+
+        // Handle expenses
+        const expenses = sortBycreatedAt(expensesRes.data.data);
+        if (expenses.length < 20) setAllExpensesLoaded(true);
+        if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
+        setExpenses(expenses as Expense[]);
+
+        // Handle combined
+        const combined = sortBycreatedAt(combinedRes.data.data);
+        if (combined.length < 20) setAllCombinedLoaded(true);
+        if (combined.length) setTimestampCombined(combined[0].createdAt);
+        setCombined(combined);
+        setLoading(() => false);
       };
       fetchAllData();
     }
@@ -196,63 +184,57 @@ const Friendspage = () => {
           case "All": {
             if (!allCombinedLoaded && combined.length) {
               setLoading(() => true)
-              try {
-                const res = await onGetCombined({ pageSize, timestamp: timestampCombined }, selectedFriend.conversation_id)
-
-                const combined = sortBycreatedAt(res.data.data);
-
-                if (combined.length < 20) setAllCombinedLoaded(true);
-                if (combined.length) setTimestampCombined(combined[0].createdAt);
-
-                setCombined((prev) => [...combined, ...prev]);
-                setScrollHeight(scrollHeight);
-              } catch (error) {
-                toast.error("Something went wrong, please try again later")
-              } finally {
+              const res = await onGetCombined({ pageSize, timestamp: timestampCombined }, selectedFriend.conversation_id)
+              if (!res) {
                 setLoading(false);
+                return;
               }
+              const combined = sortBycreatedAt(res.data.data);
+
+              if (combined.length < 20) setAllCombinedLoaded(true);
+              if (combined.length) setTimestampCombined(combined[0].createdAt);
+
+              setCombined((prev) => [...combined, ...prev]);
+              setScrollHeight(scrollHeight);
+              setLoading(false);
             }
             break;
           }
           case "Messages": {
             if (!allMessagesLoaded && messages.length) {
               setLoading(() => true)
-              try {
-                const res = await onGetMessages({ pageSize, timestamp: timestampMessages }, selectedFriend.conversation_id)
-
-                const messages = sortBycreatedAt(res.data.data);
-
-                if (messages.length < 20) setAllMessagesLoaded(true);
-                if (messages.length) setTimestampMessages(messages[0].createdAt);
-
-                setMessages((prev) => [...messages as Message[], ...prev]);
-                setScrollHeight(scrollHeight);
-              } catch (error) {
-                toast.error("Something went wrong, please try again later");
-              } finally {
+              const res = await onGetMessages({ pageSize, timestamp: timestampMessages }, selectedFriend.conversation_id)
+              if (!res) {
                 setLoading(false);
+                return;
               }
+              const messages = sortBycreatedAt(res.data.data);
+
+              if (messages.length < 20) setAllMessagesLoaded(true);
+              if (messages.length) setTimestampMessages(messages[0].createdAt);
+
+              setMessages((prev) => [...messages as Message[], ...prev]);
+              setScrollHeight(scrollHeight);
+              setLoading(false);
             }
             break;
           }
           case "Expenses": {
             if (!allExpensesLoaded && expenses.length) {
               setLoading(true)
-              try {
-                const res = await onGetExpenses({ pageSize, timestamp: timestampExpenses }, selectedFriend.conversation_id)
-
-                const expenses = sortBycreatedAt(res.data.data);
-
-                if (expenses.length < 20) setAllExpensesLoaded(true);
-                if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
-
-                setExpenses((prev) => [...expenses as Expense[], ...prev]);
-                setScrollHeight(scrollHeight);
-              } catch (error) {
-                toast.error("Something went wrong, please try again later");
-              } finally {
+              const res = await onGetExpenses({ pageSize, timestamp: timestampExpenses }, selectedFriend.conversation_id)
+              if (!res) {
                 setLoading(false);
+                return;
               }
+              const expenses = sortBycreatedAt(res.data.data);
+
+              if (expenses.length < 20) setAllExpensesLoaded(true);
+              if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
+
+              setExpenses((prev) => [...expenses as Expense[], ...prev]);
+              setScrollHeight(scrollHeight);
+              setLoading(false);
             }
           }
         }
@@ -287,27 +269,24 @@ const Friendspage = () => {
   const handleAddExpensesClose = () => setAddExpenseDialogOpen(false);
   const handleAddExpensesOpen = () => setAddExpenseDialogOpen(true);
   const handleAcceptRejectRequest = async (conversationId: string, status: string) => {
-    try {
-      const res = await onAcceptRejectRequest(status, conversationId);
-    
-      if (res.data.success) {
-        const acceptedRequest = friendRequests.find(
-          request => request.conversation_id === conversationId
-        );
-    
-        setFriendRequests(
-          friendRequests.filter(request => request.conversation_id !== conversationId)
-        );
-    
-        setFriends([
-          ...friends,
-          { ...acceptedRequest!, status: "ACCEPTED" }
-        ]);
-    
-        toast.success(`Request ${status.toLowerCase()} successfully`);
-      }
-    } catch (error) {
-      toast.error("Something went wrong. Please try again.");
+    const res = await onAcceptRejectRequest(status, conversationId);
+    if (!res) return;
+
+    if (res.data.success) {
+      const acceptedRequest = friendRequests.find(
+        request => request.conversation_id === conversationId
+      );
+
+      setFriendRequests(
+        friendRequests.filter(request => request.conversation_id !== conversationId)
+      );
+
+      setFriends([
+        ...friends,
+        { ...acceptedRequest!, status: "ACCEPTED" }
+      ]);
+
+      toast.success(`Request ${status.toLowerCase()} successfully`);
     }
   }
   const handleViewChange = (view: "All" | "Messages" | "Expenses") => {
@@ -343,62 +322,57 @@ const Friendspage = () => {
   }
   const addExpense = async (expenseInfo: FormData) => {
     setLoaders((prev) => ({ ...prev, addExpense: true }));
-    try {
-      const res = await onAddExpense(expenseInfo, selectedFriend!.conversation_id);
-
-      const expense = {
-        ...res.data.data,
-        payer: res.data.data.payer_id === user?.user_id
-          ? "You"
-          : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name ?? ''}`
-      };
-
-      setCombined((prev) => [...prev, expense]);
-      setExpenses((prev) => [...prev, expense]);
-
-      selectedFriend!.balance_amount = JSON.stringify(
-        parseFloat(selectedFriend!.balance_amount) +
-        (user?.user_id === res.data.data.payer_id
-          ? parseFloat(res.data.data.debtor_amount)
-          : -parseFloat(res.data.data.debtor_amount))
-      );
-
-      toast.success("Expense added successfully");
-    } catch (error) {
-      toast.error("Failed to add expense, please try again later");
-    } finally {
+    const res = await onAddExpense(expenseInfo, selectedFriend!.conversation_id);
+    if (!res) {
       setLoaders((prev) => ({ ...prev, addExpense: false }));
+      return;
     }
 
+    const expense = {
+      ...res.data.data,
+      payer: res.data.data.payer_id === user?.user_id
+        ? "You"
+        : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name ?? ''}`
+    };
+
+    setCombined((prev) => [...prev, expense]);
+    setExpenses((prev) => [...prev, expense]);
+
+    selectedFriend!.balance_amount = JSON.stringify(
+      parseFloat(selectedFriend!.balance_amount) +
+      (user?.user_id === res.data.data.payer_id
+        ? parseFloat(res.data.data.debtor_amount)
+        : -parseFloat(res.data.data.debtor_amount))
+    );
+
+    setLoaders((prev) => ({ ...prev, addExpense: false }));
+    toast.success("Expense added successfully");
   }
   const handleSettlement = async (settlementAmount: number) => {
-    try {
-      const res = await onAddSettlement(settlementAmount, selectedFriend!.conversation_id);
-
-      const settlement = {
-        ...res.data.data,
-        payer: res.data.data.payer_id === user?.user_id
-          ? "You"
-          : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name ?? ''}`
-      };
-
-      setCombined((prev) => [...prev, settlement]);
-      setExpenses((prev) => [...prev, settlement]);
-
-      selectedFriend!.balance_amount = JSON.stringify(
-        parseFloat(selectedFriend!.balance_amount) +
-        (user?.user_id === res.data.data.payer_id
-          ? parseFloat(res.data.data.debtor_amount)
-          : -parseFloat(res.data.data.debtor_amount))
-      );
-
-      toast.success("Settlement added successfully");
-    } catch (error) {
-      toast.error("Failed to add settlement, please try again later");
-    } finally {
+    const res = await onAddSettlement(settlementAmount, selectedFriend!.conversation_id);
+    if (!res) {
       setLoaders((prev) => ({ ...prev, addExpense: false }));
+      return;
     }
+    const settlement = {
+      ...res.data.data,
+      payer: res.data.data.payer_id === user?.user_id
+        ? "You"
+        : `${selectedFriend?.friend.first_name} ${selectedFriend?.friend.last_name ?? ''}`
+    };
 
+    setCombined((prev) => [...prev, settlement]);
+    setExpenses((prev) => [...prev, settlement]);
+
+    selectedFriend!.balance_amount = JSON.stringify(
+      parseFloat(selectedFriend!.balance_amount) +
+      (user?.user_id === res.data.data.payer_id
+        ? parseFloat(res.data.data.debtor_amount)
+        : -parseFloat(res.data.data.debtor_amount))
+    );
+
+    toast.success("Settlement added successfully");
+    setLoaders((prev) => ({ ...prev, addExpense: false }));
   }
   const handleAddFriendRequests = (requests: Friend[]) => {
     setFriendRequests(requests)

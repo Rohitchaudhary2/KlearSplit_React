@@ -35,33 +35,25 @@ const Header: React.FC<{ friend: Friend, handleUpdateExpense: (expense: Expense)
     setViewExpensesOpen(true);
   }
   const archive = async () => {
-    try {
-      if(+friend.balance_amount !== 0) {
-        toast.warning("Settle up before this action")
-        return;
-      }
-      await onAcceptRejectRequest("archived", friend.conversation_id)
-
-      toast.success(`${archiveStatus}d successfully`);
-      setArchiveStatus(() => archiveStatus === "Archive" ? "Unarchive" : "Archive");
-    } catch (error) {
-      toast.error(`Failed to ${archiveStatus.toLowerCase()}, please try again later`);
+    if (+friend.balance_amount !== 0) {
+      toast.warning("Settle up before this action")
+      return;
     }
+    const res = await onAcceptRejectRequest("archived", friend.conversation_id)
+    if (!res) return;
+    toast.success(`${archiveStatus}d successfully`);
+    setArchiveStatus(() => archiveStatus === "Archive" ? "Unarchive" : "Archive");
   }
   const block = async () => {
-    try {
-      if(+friend.balance_amount !== 0) {
-        toast.warning("Settle up before this action")
-        return;
-      }
-      await onAcceptRejectRequest("blocked", friend.conversation_id)
-
-      toast.success(`${blockStatus}ed successfully`);
-      setBlockStatus(() => blockStatus === "Block" ? "Unblock" : "Block");
-    } catch (error) {
-      toast.error(`Failed to ${blockStatus.toLowerCase()}, please try again later`);
+    if (+friend.balance_amount !== 0) {
+      toast.warning("Settle up before this action")
+      return;
     }
+    const res = await onAcceptRejectRequest("blocked", friend.conversation_id)
+    if (!res) return;
 
+    toast.success(`${blockStatus}ed successfully`);
+    setBlockStatus(() => blockStatus === "Block" ? "Unblock" : "Block");
   }
   const handleViewExpensesClose = () => setViewExpensesOpen(false);
   const addSettlement = (settlementAmount: number) => {

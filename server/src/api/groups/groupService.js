@@ -803,7 +803,6 @@ class GroupService {
       //   const oldData = {};
 
       //   if (participant.createdAt !== participant.updatedAt) {
-      //     console.log(prevParticipants.find((previous) => previous.expense_participant_id === participant.dataValues.expense_participant_id), "lkjh");
           
       //     oldData.oldData = prevParticipants.find((previous) => previous.expense_participant_id === participant.dataValues.expense_participant_id).dataValues;
       //   }

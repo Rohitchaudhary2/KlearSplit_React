@@ -118,18 +118,12 @@ const GroupsPage = () => {
       messageContainer.current!.scrollTop += messageContainer.current!.scrollHeight - scrollHeight - 20;
     }
   };
-  // useEffect(() => {
-  //   if (messageContainer.current) messageContainer.current!.scrollTop += messageContainer.current!.scrollHeight - scrollHeight - 20;
-  // }, [messages.length, expenses.length, combined.length])
   useEffect(() => {
     const getGroups = async () => {
-      try {
-        const res = await onGetGroups();
-        setGroupInvites(res.data.data.invitedGroups);
-        setGroups(res.data.data.acceptedGroups);
-      } catch (error) {
-        toast.error("Failed to fetch groups, please try again later");
-      }
+      const res = await onGetGroups();
+      if (!res) return;
+      setGroupInvites(res.data.data.invitedGroups);
+      setGroups(res.data.data.acceptedGroups);
     }
     getGroups();
     return () => {
@@ -156,82 +150,81 @@ const GroupsPage = () => {
       const fetchAllData = async () => {
         setLoading(() => true);
 
-        try {
-          const [messagesRes, expensesRes, combinedRes] = await Promise.all([
-            onGetMessages({ pageSize, timestamp: timestampMessages }, selectedGroup.group_id),
-            onGetExpensesSettlements({ pageSize, timestamp: timestampExpenses }, selectedGroup.group_id),
-            onGetCombined({ pageSize, timestamp: timestampCombined }, selectedGroup.group_id)
-          ]);
+        const [messagesRes, expensesRes, combinedRes] = await Promise.all([
+          onGetMessages({ pageSize, timestamp: timestampMessages }, selectedGroup.group_id),
+          onGetExpensesSettlements({ pageSize, timestamp: timestampExpenses }, selectedGroup.group_id),
+          onGetCombined({ pageSize, timestamp: timestampCombined }, selectedGroup.group_id)
+        ]);
 
-          // Handle messages
-          const messages = messagesRes.data.data.sort((a: GroupMessageData, b: GroupMessageData) => (a.createdAt < b.createdAt ? -1 : 1))
-          if (messages.length < 20) setAllMessagesLoaded(true);
-          if (messages.length) setTimestampMessages(messages[0].createdAt);
-          const messagesWithName = messages.map((message: GroupMessageData) => {
+        if (!messagesRes || !expensesRes || !combinedRes) {
+          setLoading(() => false);
+          return;
+        }
+
+        // Handle messages
+        const messages = messagesRes.data.data.sort((a: GroupMessageData, b: GroupMessageData) => (a.createdAt < b.createdAt ? -1 : 1))
+        if (messages.length < 20) setAllMessagesLoaded(true);
+        if (messages.length) setTimestampMessages(messages[0].createdAt);
+        const messagesWithName = messages.map((message: GroupMessageData) => {
+          const sender = getFullNameAndImage(groupMembers!.find((member) =>
+            message.sender_id === member.group_membership_id
+          ));
+          return {
+            ...message,
+            senderName: sender.fullName,
+            senderImage: sender.imageUrl
+          };
+        });
+        setMessages(messagesWithName as GroupMessageData[]);
+
+        // Handle expenses
+        const expenses = expensesRes.data.data.sort((a: GroupExpenseData | GroupSettlementData, b: GroupExpenseData | GroupSettlementData) => (a.createdAt < b.createdAt ? -1 : 1))
+        if (expenses.length < 20) setAllExpensesLoaded(true);
+        if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
+        expenses.forEach((expense: GroupExpenseData | GroupSettlementData) => {
+          if (expense.payer_id === currentMember?.group_membership_id) {
+            expense.payer = getFullNameAndImage(currentMember);
+          } else {
+            const payer = groupMembers!.find((member) => expense.payer_id === member.group_membership_id);
+            expense.payer = getFullNameAndImage(payer);
+          }
+          if ("group_settlement_id" in expense) {
+            const debtor = groupMembers!.find((member) => expense.debtor_id === member.group_membership_id);
+            expense.debtor = getFullNameAndImage(debtor);
+          }
+        });
+        setExpenses(expenses as GroupExpenseData[]);
+
+        // Handle combined
+        const combined = sortBycreatedAt(combinedRes.data.data);
+        if (combined.length < 20) setAllCombinedLoaded(true);
+        if (combined.length) setTimestampCombined(combined[0].createdAt);
+        const combinedWithName = combined.map((item) => {
+          if ("group_message_id" in item) {
             const sender = getFullNameAndImage(groupMembers!.find((member) =>
-              message.sender_id === member.group_membership_id
+              item.sender_id === member.group_membership_id
             ));
             return {
-              ...message,
+              ...item,
               senderName: sender.fullName,
               senderImage: sender.imageUrl
             };
-          });
-          setMessages(messagesWithName as GroupMessageData[]);
-
-          // Handle expenses
-          const expenses = expensesRes.data.data.sort((a: GroupExpenseData | GroupSettlementData, b: GroupExpenseData | GroupSettlementData) => (a.createdAt < b.createdAt ? -1 : 1))
-          if (expenses.length < 20) setAllExpensesLoaded(true);
-          if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
-          expenses.forEach((expense: GroupExpenseData | GroupSettlementData) => {
-            if (expense.payer_id === currentMember?.group_membership_id) {
-              expense.payer = getFullNameAndImage(currentMember);
+          } else if ("group_expense_id" in item) {
+            if (item.payer_id === currentMember?.group_membership_id) {
+              item.payer = getFullNameAndImage(currentMember);
             } else {
-              const payer = groupMembers!.find((member) => expense.payer_id === member.group_membership_id);
-              expense.payer = getFullNameAndImage(payer);
+              const payer = groupMembers!.find((member) => item.payer_id === member.group_membership_id);
+              item.payer = getFullNameAndImage(payer);
             }
-            if ("group_settlement_id" in expense) {
-              const debtor = groupMembers!.find((member) => expense.debtor_id === member.group_membership_id);
-              expense.debtor = getFullNameAndImage(debtor);
-            }
-          });
-          setExpenses(expenses as GroupExpenseData[]);
-
-          // Handle combined
-          const combined = sortBycreatedAt(combinedRes.data.data);
-          if (combined.length < 20) setAllCombinedLoaded(true);
-          if (combined.length) setTimestampCombined(combined[0].createdAt);
-          const combinedWithName = combined.map((item) => {
-            if ("group_message_id" in item) {
-              const sender = getFullNameAndImage(groupMembers!.find((member) =>
-                item.sender_id === member.group_membership_id
-              ));
-              return {
-                ...item,
-                senderName: sender.fullName,
-                senderImage: sender.imageUrl
-              };
-            } else if ("group_expense_id" in item) {
-              if (item.payer_id === currentMember?.group_membership_id) {
-                item.payer = getFullNameAndImage(currentMember);
-              } else {
-                const payer = groupMembers!.find((member) => item.payer_id === member.group_membership_id);
-                item.payer = getFullNameAndImage(payer);
-              }
-              return item
-            } else {
-              const debtor = groupMembers!.find((member) => item.debtor_id === member.group_membership_id);
-              item.debtor = getFullNameAndImage(debtor);
-              return item;
-            }
-          })
-          setCombined(combinedWithName);
-
-        } catch (error) {
-          toast.error("Something went wrong, please try again later!")
-        } finally {
-          setLoading(() => false);
-        }
+            return item
+          } else {
+            const debtor = groupMembers!.find((member) => item.debtor_id === member.group_membership_id);
+            item.debtor = getFullNameAndImage(debtor);
+            return item;
+          }
+        })
+        setCombined(combinedWithName);
+        setLoading(() => false);
       };
       fetchAllData();
     }
@@ -244,131 +237,126 @@ const GroupsPage = () => {
           case "All": {
             if (!allCombinedLoaded && combined.length) {
               setLoading(() => true)
-              try {
-                const res = await onGetCombined({ pageSize, timestamp: timestampCombined }, selectedGroup.group_id);
-
-                const combined = sortBycreatedAt(res.data.data);
-
-                if (combined.length < 20) setAllCombinedLoaded(true);
-                if (combined.length) setTimestampCombined(combined[0].createdAt);
-
-                const combinedWithName = combined.map((item) => {
-                  if ("group_message_id" in item) {
-                    const sender = getFullNameAndImage(
-                      groupMembers!.find(
-                        (member) => item.sender_id === member.group_membership_id
-                      )
-                    );
-                    return {
-                      ...item,
-                      senderName: sender.fullName,
-                      senderImage: sender.imageUrl
-                    };
-                  } else if ("group_expense_id" in item) {
-                    if (item.payer_id === currentMember?.group_membership_id) {
-                      item.payer = getFullNameAndImage(currentMember);
-                    } else {
-                      const payer = groupMembers!.find(
-                        (member) => item.payer_id === member.group_membership_id
-                      );
-                      item.payer = getFullNameAndImage(payer);
-                    }
-                    return item;
-                  } else {
-                    const debtor = groupMembers!.find(
-                      (member) => item.debtor_id === member.group_membership_id
-                    );
-                    item.debtor = getFullNameAndImage(debtor);
-                    return item;
-                  }
-                });
-
-                setCombined((prev) => [...combinedWithName, ...prev]);
-                setScrollHeight(scrollHeight);
-              } catch (error) {
-                toast.error("Failed to fetch group activity, please try again later");
-              } finally {
+              const res = await onGetCombined({ pageSize, timestamp: timestampCombined }, selectedGroup.group_id);
+              if (!res) {
                 setLoading(false);
+                return;
               }
+              const combined = sortBycreatedAt(res.data.data);
+
+              if (combined.length < 20) setAllCombinedLoaded(true);
+              if (combined.length) setTimestampCombined(combined[0].createdAt);
+
+              const combinedWithName = combined.map((item) => {
+                if ("group_message_id" in item) {
+                  const sender = getFullNameAndImage(
+                    groupMembers!.find(
+                      (member) => item.sender_id === member.group_membership_id
+                    )
+                  );
+                  return {
+                    ...item,
+                    senderName: sender.fullName,
+                    senderImage: sender.imageUrl
+                  };
+                } else if ("group_expense_id" in item) {
+                  if (item.payer_id === currentMember?.group_membership_id) {
+                    item.payer = getFullNameAndImage(currentMember);
+                  } else {
+                    const payer = groupMembers!.find(
+                      (member) => item.payer_id === member.group_membership_id
+                    );
+                    item.payer = getFullNameAndImage(payer);
+                  }
+                  return item;
+                } else {
+                  const debtor = groupMembers!.find(
+                    (member) => item.debtor_id === member.group_membership_id
+                  );
+                  item.debtor = getFullNameAndImage(debtor);
+                  return item;
+                }
+              });
+
+              setCombined((prev) => [...combinedWithName, ...prev]);
+              setScrollHeight(scrollHeight);
+              setLoading(false);
             }
             break;
           }
           case "Messages": {
             if (!allMessagesLoaded && messages.length) {
               setLoading(() => true)
-              try {
-                const res = await onGetMessages({ pageSize, timestamp: timestampMessages }, selectedGroup.group_id)
-
-                const messages = res.data.data.sort(
-                  (a: GroupMessageData, b: GroupMessageData) =>
-                    a.createdAt < b.createdAt ? -1 : 1
-                );
-
-                if (messages.length < 20) setAllMessagesLoaded(true);
-                if (messages.length) setTimestampMessages(messages[0].createdAt);
-
-                const messagesWithName = messages.map((message: GroupMessageData) => {
-                  const sender = getFullNameAndImage(
-                    groupMembers!.find(
-                      (member) => message.sender_id === member.group_membership_id
-                    )
-                  );
-                  return {
-                    ...message,
-                    senderName: sender.fullName,
-                    senderImage: sender.imageUrl
-                  };
-                });
-
-                setMessages((prev) => [...messagesWithName as GroupMessageData[], ...prev]);
-                setScrollHeight(scrollHeight);
-              } catch (error) {
-                toast.error("Failed to fetch group messages, please try again later");
-              } finally {
+              const res = await onGetMessages({ pageSize, timestamp: timestampMessages }, selectedGroup.group_id)
+              if (!res) {
                 setLoading(false);
+                return;
               }
+              const messages = res.data.data.sort(
+                (a: GroupMessageData, b: GroupMessageData) =>
+                  a.createdAt < b.createdAt ? -1 : 1
+              );
+
+              if (messages.length < 20) setAllMessagesLoaded(true);
+              if (messages.length) setTimestampMessages(messages[0].createdAt);
+
+              const messagesWithName = messages.map((message: GroupMessageData) => {
+                const sender = getFullNameAndImage(
+                  groupMembers!.find(
+                    (member) => message.sender_id === member.group_membership_id
+                  )
+                );
+                return {
+                  ...message,
+                  senderName: sender.fullName,
+                  senderImage: sender.imageUrl
+                };
+              });
+
+              setMessages((prev) => [...messagesWithName as GroupMessageData[], ...prev]);
+              setScrollHeight(scrollHeight);
+              setLoading(false);
             }
             break;
           }
           case "Expenses": {
             if (!allExpensesLoaded && expenses.length) {
               setLoading(true);
-              try {
-                const res = await onGetExpensesSettlements({ pageSize, timestamp: timestampExpenses }, selectedGroup.group_id);
-
-                const expenses = res.data.data.sort(
-                  (a: GroupExpenseData | GroupSettlementData, b: GroupExpenseData | GroupSettlementData) =>
-                    a.createdAt < b.createdAt ? -1 : 1
-                );
-
-                if (expenses.length < 20) setAllExpensesLoaded(true);
-                if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
-
-                expenses.forEach((expense: GroupExpenseData | GroupSettlementData) => {
-                  if (expense.payer_id === currentMember?.group_membership_id) {
-                    expense.payer = getFullNameAndImage(currentMember);
-                  } else {
-                    const payer = groupMembers!.find(
-                      (member) => expense.payer_id === member.group_membership_id
-                    );
-                    expense.payer = getFullNameAndImage(payer);
-                  }
-
-                  if ("group_settlement_id" in expense) {
-                    const debtor = groupMembers!.find(
-                      (member) => expense.debtor_id === member.group_membership_id
-                    );
-                    expense.debtor = getFullNameAndImage(debtor);
-                  }
-                });
-
-                setExpenses((prev) => [...expenses as GroupExpenseData[], ...prev]);
-                setScrollHeight(scrollHeight);
-              } catch (error) {
-                toast.error("Failed to fetch group expenses/settlements, please try again later");
-              } finally {
+              const res = await onGetExpensesSettlements({ pageSize, timestamp: timestampExpenses }, selectedGroup.group_id);
+              if (!res) {
                 setLoading(false);
+                return;
               }
+
+              const expenses = res.data.data.sort(
+                (a: GroupExpenseData | GroupSettlementData, b: GroupExpenseData | GroupSettlementData) =>
+                  a.createdAt < b.createdAt ? -1 : 1
+              );
+
+              if (expenses.length < 20) setAllExpensesLoaded(true);
+              if (expenses.length) setTimestampExpenses(expenses[0].createdAt);
+
+              expenses.forEach((expense: GroupExpenseData | GroupSettlementData) => {
+                if (expense.payer_id === currentMember?.group_membership_id) {
+                  expense.payer = getFullNameAndImage(currentMember);
+                } else {
+                  const payer = groupMembers!.find(
+                    (member) => expense.payer_id === member.group_membership_id
+                  );
+                  expense.payer = getFullNameAndImage(payer);
+                }
+
+                if ("group_settlement_id" in expense) {
+                  const debtor = groupMembers!.find(
+                    (member) => expense.debtor_id === member.group_membership_id
+                  );
+                  expense.debtor = getFullNameAndImage(debtor);
+                }
+              });
+
+              setExpenses((prev) => [...expenses as GroupExpenseData[], ...prev]);
+              setScrollHeight(scrollHeight);
+              setLoading(false);
             }
           }
         }
@@ -403,22 +391,19 @@ const GroupsPage = () => {
   const handleAddExpensesClose = () => setAddExpenseDialogOpen(false);
   const handleAddExpensesOpen = () => setAddExpenseDialogOpen(true);
   const handleAcceptRejectRequest = async (conversationId: string, status: string) => {
-    try {
-      const res = await onAcceptRejectRequest(status, conversationId);
+    const res = await onAcceptRejectRequest(status, conversationId);
+    if (!res) return;
 
-      if (res.data.success) {
-        const acceptedRequest = groupInvites.find((request) => request.group_id === conversationId);
+    if (res.data.success) {
+      const acceptedRequest = groupInvites.find((request) => request.group_id === conversationId);
 
-        // Remove the accepted request from the invites list
-        setGroupInvites(groupInvites.filter((request) => request.group_id !== conversationId));
+      // Remove the accepted request from the invites list
+      setGroupInvites(groupInvites.filter((request) => request.group_id !== conversationId));
 
-        // Add the accepted request to the groups list
-        setGroups([...groups, { ...acceptedRequest!, status: "ACCEPTED" }]);
+      // Add the accepted request to the groups list
+      setGroups([...groups, { ...acceptedRequest!, status: "ACCEPTED" }]);
 
-        toast.success(`Request ${status} successfully`);
-      }
-    } catch (error) {
-      toast.error("Failed to process the request, please try again later");
+      toast.success(`Request ${status} successfully`);
     }
   }
   const handleViewChange = (view: "All" | "Messages" | "Expenses") => {
@@ -449,19 +434,16 @@ const GroupsPage = () => {
   const handleSelectGroupData = async (group: GroupData | undefined) => {
     setGroupDetailsOpen(false);
     if (group) {
-      try {
-        const res = await onGetGroupData(group.group_id);
+      const res = await onGetGroupData(group.group_id);
+      if (!res) return;
 
-        const filteredMembers = filterMembers(res.data.data);
-        setGroupMembers(filteredMembers);
+      const filteredMembers = filterMembers(res.data.data);
+      setGroupMembers(filteredMembers);
 
-        const currentMember = filteredMembers.find(
-          (member) => user?.user_id === member.member_id
-        );
-        setCurrentMember(currentMember);
-      } catch (error) {
-        toast.error("Failed to fetch group data, please try again later");
-      }
+      const currentMember = filteredMembers.find(
+        (member) => user?.user_id === member.member_id
+      );
+      setCurrentMember(currentMember);
     }
     if (group === selectedGroup) return;
     if (selectedGroup) {
@@ -481,71 +463,71 @@ const GroupsPage = () => {
   }
   const addExpense = async (expenseInfo: FormData) => {
     setLoaders((prev) => ({ ...prev, addExpense: true }));
-    try {
-      const res = await onAddExpense(expenseInfo, selectedGroup!.group_id);
+    const res = await onAddExpense(expenseInfo, selectedGroup!.group_id);
+    if (!res) {
+      setLoaders((prev) => ({ ...prev, addExpense: false }));
+      return;
+    }
 
-      const debtorAmount = res.data.data.expenseParticipants.reduce(
-        (acc: number, val: ExpenseParticipant) => acc + parseFloat(val.debtor_amount),
-        0
+    const debtorAmount = res.data.data.expenseParticipants.reduce(
+      (acc: number, val: ExpenseParticipant) => acc + parseFloat(val.debtor_amount),
+      0
+    );
+
+    const expenseData = { ...res.data.data.expense, total_debt_amount: JSON.stringify(debtorAmount) };
+
+    if (expenseData.payer_id === currentMember?.group_membership_id) {
+      expenseData.payer = getFullNameAndImage(currentMember);
+    } else {
+      const payer = groupMembers!.find(
+        (member) => expenseData.payer_id === member.group_membership_id
       );
+      expenseData.payer = getFullNameAndImage(payer);
+    }
 
-      const expenseData = { ...res.data.data.expense, total_debt_amount: JSON.stringify(debtorAmount) };
+    const isUserPayer = currentMember?.group_membership_id === expenseData.payer_id;
 
-      if (expenseData.payer_id === currentMember?.group_membership_id) {
-        expenseData.payer = getFullNameAndImage(currentMember);
-      } else {
-        const payer = groupMembers!.find(
-          (member) => expenseData.payer_id === member.group_membership_id
+    const updatedGroupMembers = groupMembers!.map((member) => {
+      if (member.group_membership_id === expenseData.payer_id) {
+        member.total_balance = JSON.stringify(
+          Math.round((parseFloat(member.total_balance) + debtorAmount) * 100) / 100
         );
-        expenseData.payer = getFullNameAndImage(payer);
+        const userDebtAmount = res.data.data.expenseParticipants.find(
+          (participant) => participant.debtor_id === currentMember?.group_membership_id
+        )?.debtor_amount ?? 0;
+        member.balance_with_user = JSON.stringify(
+          Math.round((+member.balance_with_user + +userDebtAmount) * 100) / 100
+        );
       }
 
-      const isUserPayer = currentMember?.group_membership_id === expenseData.payer_id;
-
-      const updatedGroupMembers = groupMembers!.map((member) => {
-        if (member.group_membership_id === expenseData.payer_id) {
-          member.total_balance = JSON.stringify(
-            Math.round((parseFloat(member.total_balance) + debtorAmount) * 100) / 100
-          );
-          const userDebtAmount = res.data.data.expenseParticipants.find(
-            (participant) => participant.debtor_id === currentMember?.group_membership_id
-          )?.debtor_amount ?? 0;
-          member.balance_with_user = JSON.stringify(
-            Math.round((+member.balance_with_user + +userDebtAmount) * 100) / 100
-          );
-        }
-
-        res.data.data.expenseParticipants.forEach((participant) => {
-          if (participant.debtor_id === member.group_membership_id) {
-            if (isUserPayer) {
-              member.balance_with_user = JSON.stringify(
-                Math.round((+member.balance_with_user - +participant.debtor_amount) * 100) / 100
-              );
-            }
-            member.total_balance = JSON.stringify(
-              Math.round((+member.total_balance - +participant.debtor_amount) * 100) / 100
+      res.data.data.expenseParticipants.forEach((participant) => {
+        if (participant.debtor_id === member.group_membership_id) {
+          if (isUserPayer) {
+            member.balance_with_user = JSON.stringify(
+              Math.round((+member.balance_with_user - +participant.debtor_amount) * 100) / 100
             );
           }
-        })
-        return member;
+          member.total_balance = JSON.stringify(
+            Math.round((+member.total_balance - +participant.debtor_amount) * 100) / 100
+          );
+        }
       })
+      return member;
+    })
 
-      setGroupMembers(updatedGroupMembers);
-      setCombined((prev) => [...prev, expenseData]);
-      setExpenses((prev) => [...prev, expenseData]);
+    setGroupMembers(updatedGroupMembers);
+    setCombined((prev) => [...prev, expenseData]);
+    setExpenses((prev) => [...prev, expenseData]);
 
-      selectedGroup!.balance_amount = JSON.stringify(
-        Math.round((parseFloat(selectedGroup!.balance_amount) + (currentMember?.group_membership_id === res.data.data.expense.payer_id ? debtorAmount : -debtorAmount)) * 100) / 100
-      );
+    selectedGroup!.balance_amount = JSON.stringify(
+      Math.round((parseFloat(selectedGroup!.balance_amount) + (currentMember?.group_membership_id === res.data.data.expense.payer_id ? debtorAmount : -debtorAmount)) * 100) / 100
+    );
 
-      toast.success("Expense added successfully");
-    } catch (error) {
-      toast.error("Failed to add expense, please try again later");
-    } finally {
-      setLoaders((prev) => ({ ...prev, addExpense: false }));
-    }
+    toast.success("Expense added successfully");
+    setLoaders((prev) => ({ ...prev, addExpense: false }));
   }
-  const handleSettlement = async (settlement: GroupSettlementData) => {
+
+  const handleSettlement = (settlement: GroupSettlementData) => {
     selectedGroup!.balance_amount = JSON.stringify(
       Math.round(
         (
@@ -573,16 +555,13 @@ const GroupsPage = () => {
   }
 
   const handleLeaveGroup = async (id: string) => {
-    try {
-      await onLeaveGroup(id);
-      const updatedGroupInvites = groupInvites.filter((group) => group.group_id !== id);
-      setGroupInvites(updatedGroupInvites)
-      const updatedGroups = groups.filter((group) => group.group_id !== id);
-      setGroups(updatedGroups)
-      toast.success("Group left successfully!")
-    } catch (error) {
-      toast.error("Something went wrong. Please try again later")
-    }
+    const res = await onLeaveGroup(id);
+    if (!res) return;
+    const updatedGroupInvites = groupInvites.filter((group) => group.group_id !== id);
+    setGroupInvites(updatedGroupInvites)
+    const updatedGroups = groups.filter((group) => group.group_id !== id);
+    setGroups(updatedGroups)
+    toast.success("Group left successfully!")
   }
 
   const handleUpdateExpense = (expenseData: GroupExpenseResponse["data"], previousExpenseData: GroupExpenseData) => {

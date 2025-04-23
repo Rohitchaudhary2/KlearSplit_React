@@ -32,32 +32,25 @@ const Header: React.FC<{
       setViewExpensesOpen(true);
     }
     const block = async () => {
-      try {
-        if (+group.balance_amount !== 0) {
-          toast.warning("Settle up before this action")
-          return;
-        }
-        await onUpdateGroupMember({ has_blocked: !group.has_blocked }, group.group_id);
-
-        toast.success(`${blockStatus}ed successfully`);
-        setBlockStatus(() => (blockStatus === "Block" ? "Unblock" : "Block"));
-      } catch (error) {
-        toast.error("Failed to update block status, please try again later");
+      if (+group.balance_amount !== 0) {
+        toast.warning("Settle up before this action")
+        return;
       }
+      const res = await onUpdateGroupMember({ has_blocked: !group.has_blocked }, group.group_id);
+      if (!res) return;
+      toast.success(`${blockStatus}ed successfully`);
+      setBlockStatus(() => (blockStatus === "Block" ? "Unblock" : "Block"));
     }
     const archive = async () => {
-      try {
-        if (+group.balance_amount !== 0) {
-          toast.warning("Settle up before this action")
-          return;
-        }
-        await onUpdateGroupMember({ has_archived: !group.has_archived }, group.group_id);
-
-        toast.success(`${archivalStatus}ed successfully`);
-        setArchivalStatus(() => (archivalStatus === "Archive" ? "Unarchive" : "Archive"));
-      } catch (error) {
-        toast.error("Failed to update archival status, please try again later");
+      if (+group.balance_amount !== 0) {
+        toast.warning("Settle up before this action")
+        return;
       }
+      const res = await onUpdateGroupMember({ has_archived: !group.has_archived }, group.group_id);
+      if (!res) return;
+
+      toast.success(`${archivalStatus}ed successfully`);
+      setArchivalStatus(() => (archivalStatus === "Archive" ? "Unarchive" : "Archive"));
     }
     const handleViewExpensesClose = () => setViewExpensesOpen(false);
     const onLeaveGroup = () => {

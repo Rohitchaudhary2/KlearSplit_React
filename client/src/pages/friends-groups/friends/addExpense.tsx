@@ -34,7 +34,7 @@ const AddExpense: React.FC<{
     handleBulkAddExpenses?: (expenses: Expense[]) => void
     handleAddExpensesClose: () => void,
     handleAddExpense: (expenseInfo: FormData) => void
-}> = ({ id, open, friend, expense, handleBulkAddExpenses,handleAddExpensesClose, handleAddExpense }) => {
+}> = ({ id, open, friend, expense, handleBulkAddExpenses, handleAddExpensesClose, handleAddExpense }) => {
     const user = useSelector((store: RootState) => store.auth.user)
     const [expenseInfo, setExpenseInfo] = useState({
         expense_name: "",
@@ -147,19 +147,15 @@ const AddExpense: React.FC<{
     useEffect(() => setIsFormInvalid(isValid), [isValid])
 
     const handleSubmit = async () => {
-        if(isBulkExpenseOptionOpen) {
+        if (isBulkExpenseOptionOpen) {
             const formData = new FormData();
             formData.append("file", selectedFile!, selectedFile!.name);
             formData.append("tableName", "friends_expenses");
-            try {
-                const res = await onBulkAddExpenses(formData, id);
-              
-                toast.success("Expenses added successfully!");
-                handleBulkAddExpenses!(res.data.data);
-                handleAddExpensesClose();
-              } catch (error) {
-                toast.error("Failed to add expenses, please try again later");
-              }              
+            const res = await onBulkAddExpenses(formData, id);
+            if (!res) return;
+            toast.success("Expenses added successfully!");
+            handleBulkAddExpenses!(res.data.data);
+            handleAddExpensesClose();
             return;
         }
         expenseInfo.debtor_id = expenseInfo.payer_id === user?.user_id ? friend.user_id : user!.user_id;

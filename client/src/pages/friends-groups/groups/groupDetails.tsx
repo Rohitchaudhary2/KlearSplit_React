@@ -42,34 +42,31 @@ const GroupDetails: React.FC<GroupDetailsProps> = ({ handleSettlement, handleGro
         };
     }
     const handleSettlementSubmit = async (settlementAmount: number) => {
-        try {
-            const res = await onAddSettlement({
-                payer_id: payer!.group_membership_id,
-                debtor_id: debtor!.group_membership_id,
-                settlement_amount: settlementAmount
-            }, group.group_id);
-            const settlement = res.data.data;
+        const res = await onAddSettlement({
+            payer_id: payer!.group_membership_id,
+            debtor_id: debtor!.group_membership_id,
+            settlement_amount: settlementAmount
+        }, group.group_id);
+        if (!res) return;
+        const settlement = res.data.data;
 
-            if (settlement.payer_id === currentMember?.group_membership_id) {
-                settlement.payer = getFullNameAndImage(currentMember);
-            } else {
-                const payer = groupMembers!.find(
-                    (member) => settlement.payer_id === member.group_membership_id
-                );
-                settlement.payer = getFullNameAndImage(payer);
-            }
-
-            if ("group_settlement_id" in settlement) {
-                const debtor = groupMembers!.find(
-                    (member) => settlement.debtor_id === member.group_membership_id
-                );
-                settlement.debtor = getFullNameAndImage(debtor);
-            }
-            handleSettlement(settlement);
-            toast.success("Settlement added successfully")
-        } catch (error) {
-            toast.error("Failed to add group settlement, please try again later");
+        if (settlement.payer_id === currentMember?.group_membership_id) {
+            settlement.payer = getFullNameAndImage(currentMember);
+        } else {
+            const payer = groupMembers!.find(
+                (member) => settlement.payer_id === member.group_membership_id
+            );
+            settlement.payer = getFullNameAndImage(payer);
         }
+
+        if ("group_settlement_id" in settlement) {
+            const debtor = groupMembers!.find(
+                (member) => settlement.debtor_id === member.group_membership_id
+            );
+            settlement.debtor = getFullNameAndImage(debtor);
+        }
+        handleSettlement(settlement);
+        toast.success("Settlement added successfully")
         handleSettlementClose();
     }
     const handleSettlementClose = () => {

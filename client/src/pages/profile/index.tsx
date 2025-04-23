@@ -126,28 +126,22 @@ const Profile = () => {
         if (profileInfo.last_name) formData.append("last_name", profileInfo.last_name!);
         if (profileInfo.phone) formData.append("phone", profileInfo.phone)
         if (image) formData.append("profile", image)
-        try {
-            const res = await onUpdateProfile(formData, user!.user_id);
+        const res = await onUpdateProfile(formData, user!.user_id);
+        if (!res) return;
 
-            toast.success("Profile updated successfully!");
-            dispatch(login(res.data.data));
-        } catch (error) {
-            toast.error("Failed to update profile, please try again later");
-        }
+        toast.success("Profile updated successfully!");
+        dispatch(login(res.data.data));
     }
     const handleChangePassword = async () => {
-        try {
-            await onUpdatePassword(passwords, user!.user_id);
+        const res = await onUpdatePassword(passwords, user!.user_id);
+        if (!res) return;
 
-            toast.success("Password changed successfully");
-            setPasswords({
-                newPassword: "",
-                currentPassword: "",
-                confirmPassword: ""
-            });
-        } catch (error) {
-            toast.error("Failed to change password, please try again later");
-        }
+        toast.success("Password changed successfully");
+        setPasswords({
+            newPassword: "",
+            currentPassword: "",
+            confirmPassword: ""
+        });
     }
     return (
         <Box className="flex flex-col min-h-[89vh] justify-center items-center content-center">
@@ -174,7 +168,6 @@ const Profile = () => {
                     activeTab === "profile"
                         ?
                         <Box className="grow min-h-100 h-full overflow-auto px-3 pb-3 flex flex-col gap-4 justify-center items-center">
-                            {/* <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" sx={{ height: 100, width: 100 }} /> */}
                             <input
                                 accept="image/*"
                                 id="avatar-upload"
@@ -185,7 +178,7 @@ const Profile = () => {
                             <label htmlFor="avatar-upload" style={{ cursor: 'pointer' }}>
                                 <Avatar
                                     alt={`${user?.first_name} || Avatar`}
-                                    src={previewImage ?? user?.image_url ?? `vite.svg`}
+                                    src={previewImage ?? user?.image_url ?? 'assets/image.png'}
                                     sx={{ height: 100, width: 100 }}
                                 />
                             </label>
