@@ -1,4 +1,5 @@
 import FriendService from "../friends/friendService.js";
+import GroupService from "../groups/groupService.js";
 import logger from "../utils/logger.js";
 
 const socketHandler = (io) => {
@@ -43,7 +44,8 @@ const socketHandler = (io) => {
     socket.on("sendGroupMessage", async(messageData) => {
       try {
         // Emit the message to the users in the room
-        io.to(messageData.group_id).emit("newMessage", messageData);
+        const message = await GroupService.saveMessage({message: messageData.message}, messageData.group_id, messageData.sender_id)
+        io.to(messageData.group_id).emit("newMessage", message);
       } catch (error) {
         logger.log({
           "level": "error",

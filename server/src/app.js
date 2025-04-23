@@ -14,7 +14,7 @@ import routes from "./appRoutes.js";
 
 const app = express();
 const corsOptions = {
-  "origin": "http://localhost:4200",
+  "origin": "http://localhost:5173",
   "credentials": true
 };
 const server = createServer(app); // Create HTTP server with Express app

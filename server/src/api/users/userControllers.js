@@ -6,6 +6,7 @@ class UserController {
   // Controller for verifying a user before user creation
   static verifyUser = asyncHandler(async(req, res) => {
     await UserService.verifyUser(req.body);
+    
     responseHandler(res, 200, "If email is valid then OTP sent successfully.");
   });
 

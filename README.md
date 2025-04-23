@@ -7,8 +7,7 @@
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
   - [Cloning the Repository](#cloning-the-repository)
-  - [Backend (Node.js)](#backend-nodejs)
-  - [Frontend (Angular)](#frontend-react)
+  - [Running the Application](#running-the-application)
 - [Environment Variables](#environment-variables)
 
 ## Technologies Used
@@ -26,7 +25,7 @@
 ### Frontend (Client):
 - **React**
 - **Axios**
-- **LCookies** for access token management
+- **Cookies** for token management
 
 ## Installation
 
@@ -43,7 +42,7 @@ Clone this repository using the following command:
 
 ```bash
 git clone https://github.com/Rohitchaudhary2/KlearSplit_React.git
-cd KlearSplit
+cd KlearSplit_React
 ```
 
 ### Running the Application
@@ -54,7 +53,7 @@ cd KlearSplit
     npm install
     ```
 
-3. Start the application:
+2. Start the application:
 
     ```bash
     npm run dev
@@ -72,12 +71,3 @@ Firstly create a database in pgAdmin.
 Make sure to replace the placeholder values with your actual database credentials and secret keys.
 Create your app password from app passwords in Google account for SMTP_PASSWORD and use your email for both SMTP_USER as well as for SMTP_MAIL.
 Create your google client credentials from google's developer console by creating new project.
-
-
-Create a `config.ts` file in the `client/src/environments` directory with the following structure:
-
-```plaintext
-export const config = {
-    encryptionSecretKey: 'your_secret_code'
-};
-```

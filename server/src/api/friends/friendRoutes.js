@@ -25,7 +25,7 @@ const ensureDirectoryExists = (dirPath) => {
 
 const storage = multer.diskStorage({
   "destination": function(req, file, cb) {
-    const uploadPath = path.resolve(__dirname, "/uploads/csv");
+    const uploadPath = path.join(__dirname, "/uploads/csv");
 
     // Ensure the directory exists before storing the file
     ensureDirectoryExists(uploadPath);
