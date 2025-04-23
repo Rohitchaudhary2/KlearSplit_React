@@ -8,45 +8,50 @@ import DashboardPage from '../pages/dashboard/index';
 import Friendspage from '../pages/friends-groups/friends/index';
 import GroupsPage from '../pages/friends-groups/groups/index';
 import Profile from '../pages/profile';
+import ForgotPassword from '../pages/auth/forgotPassword';
 
-const router = createBrowserRouter ([
+const router = createBrowserRouter([
     {
         path: '/',
         element: <UnprotectedRoute />,
         children: [
             {
                 index: true,
-                element: <HomePage/>
+                element: <HomePage />
             },
             {
                 path: 'register',
-                element: <RegisterPage/>
+                element: <RegisterPage />
             },
             {
                 path: 'login',
-                element: <LoginPage/>
-            }
+                element: <LoginPage />
+            },
+            {
+                path: "forgot-password",
+                element: <ForgotPassword />,
+            },
         ]
     },
     {
         path: '/',
-        element: <ProtectedRoute/>,
+        element: <ProtectedRoute />,
         children: [
             {
                 path: 'dashboard',
-                element: <DashboardPage/>
+                element: <DashboardPage />
             },
             {
                 path: 'friends',
-                element: <Friendspage/>
+                element: <Friendspage />
             },
             {
                 path: 'groups',
-                element: <GroupsPage/>
+                element: <GroupsPage />
             },
             {
                 path: 'profile',
-                element: <Profile/>
+                element: <Profile />
             }
         ]
     }

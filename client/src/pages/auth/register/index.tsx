@@ -73,27 +73,21 @@ const RegisterPage = () => {
         e.preventDefault();
         switch (stage) {
             case "signup":
-                try {
-                    const res = await signup(signupInfo);
+                const res = await signup(signupInfo);
+                if (!res) return;
 
-                    // Successful verification
-                    setStage("otp"); // Proceed to the next stage
-                    toast.success(res.data.message); // Show success message
-                } catch (error) {
-                    toast.error("An error occurred during verification. Please try again later.");
-                }
+                // Successful verification
+                setStage("otp"); // Proceed to the next stage
+                toast.success(res.data.message); // Show success message
                 break;
             case "otp": {
-                try {
-                    const res = await otpSubmission({...signupInfo, otp});
+                const res = await otpSubmission({ ...signupInfo, otp });
+                if (!res) return;
 
-                    // Successful registration
-                    dispatch(login(res.data.data)); // Store user data in the state
-                    navigate("/dashboard"); // Redirect to the dashboard
-                    toast.success(res.data.message); // Show success message
-                } catch (error) {
-                    toast.error("An error occurred during registration. Please try again later.");
-                }
+                // Successful registration
+                dispatch(login(res.data.data)); // Store user data in the state
+                navigate("/dashboard"); // Redirect to the dashboard
+                toast.success(res.data.message); // Show success message
                 break;
             }
         }

@@ -39,16 +39,13 @@ const LoginPage = () => {
     useEffect(() => setIsLoginDisabled(isValid), [isValid]);
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            const res = await handleLogin(loginInfo);
+        const res = await handleLogin(loginInfo);
+        if (!res) return;
 
-            // Successful login
-            dispatch(login(res.data.data));
-            navigate("/dashboard");
-            toast.success(res.data.message);
-        } catch (error) {
-            toast.error("An error occurred during login. Please try again later.");
-        }
+        // Successful login
+        dispatch(login(res.data.data));
+        navigate("/dashboard");
+        toast.success(res.data.message);
     }
 
     const [showPassword, setShowPassword] = useState(false);
@@ -141,7 +138,7 @@ const LoginPage = () => {
                             />
 
                             <div className="mt-4 text-right">
-                                <Link to="/register" className="text-blue-600 hover:underline">
+                                <Link to="/forgot-password" className="text-blue-600 hover:underline">
                                     Forgot your Password?
                                 </Link>
                             </div>

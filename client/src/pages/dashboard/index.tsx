@@ -2,7 +2,6 @@ import { Box, FormControl, MenuItem, Paper, Select, SelectChangeEvent, Stack, Ty
 import { useEffect, useRef, useState } from "react"
 import { PieChart, BarChart, axisClasses } from '@mui/x-charts';
 import classes from "./index.module.css"
-import { toast } from "sonner";
 import { handleBalanceAmounts, handleCashFlowFriends, handleCashFlowGroups, handleExpensesCount, handleMonthlyExpenses } from "./services";
 
 interface PieChartData {
@@ -31,7 +30,6 @@ const DashboardPage = () => {
     const pieChartColors = ["#C79FEF", "#578FCA", "#A1E3F9", "#D1F8EF", "#9370DB"];
     const [year, setYear] = useState(2025);
     const years = [2020, 2021, 2022, 2023, 2024, 2025];
-    // const colors = ["#3674B5", "#578FCA", "#A1E3F9", "#D1F8EF", "#5B9279", "#27AE60", "#2E7D32", "#C62828", "#E74C3C", "#FFB400", "#8E44AD", "#6A0DAD"]
     useEffect(() => {
         const updateWidth = () => {
             if (firstDiv.current) {
@@ -39,80 +37,61 @@ const DashboardPage = () => {
             }
         };
         const getExpensesCount = async () => {
-            try {
-                const data = await handleExpensesCount();
+            const data = await handleExpensesCount();
 
-                setExpensesCount(data.data.data.map((value: number, index: number) => ({
-                    id: index,
-                    value,
-                    label: ["0-1000", "1000-5000", "5000-10000", "10000-15000", "15000+"][index],
-                    color: pieChartColors[index]
-                })));
-
-            } catch (error) {
-                toast.error("Something went wrong, please try again later!")
-            } finally {
-                setLoaders((prev) => ({ ...prev, expenseCount: false }));
-            }
+            setLoaders((prev) => ({ ...prev, expenseCount: false }));
+            if (!data) return;
+            setExpensesCount(data.data.data.map((value: number, index: number) => ({
+                id: index,
+                value,
+                label: ["0-1000", "1000-5000", "5000-10000", "10000-15000", "15000+"][index],
+                color: pieChartColors[index]
+            })));
         }
         const getBalance = async () => {
-            try {
-                const data = await handleBalanceAmounts();
+            const data = await handleBalanceAmounts();
+            setLoaders((prev) => ({ ...prev, balance: false }));
+            if (!data) return;
 
-                setBalanceAmounts(data.data.data.map((value: number, index: number) => ({
-                    id: index,
-                    value,
-                    label: ["Amount Lent", "Amount Borrowed"][index],
-                    color: ["#27AE60", "#E74C3C"][index]
-                })));
+            setBalanceAmounts(data.data.data.map((value: number, index: number) => ({
+                id: index,
+                value,
+                label: ["Amount Lent", "Amount Borrowed"][index],
+                color: ["#27AE60", "#E74C3C"][index]
+            })));
 
-                setBalanceAmount(
-                    Math.round((data.data.data[0] - data.data.data[1]) * 100) / 100
-                );
+            setBalanceAmount(
+                Math.round((data.data.data[0] - data.data.data[1]) * 100) / 100
+            );
 
-            } catch (error) {
-                toast.error("Something went wrong, please try again later!");
-            } finally {
-                setLoaders((prev) => ({ ...prev, balance: false }));
-            }
         }
         const getCashFlowFriends = async () => {
-            try {
-                const data = await handleCashFlowFriends();
+            const data = await handleCashFlowFriends();
+            setLoaders((prev) => ({ ...prev, cashFlowPartners: false }));
+            if (!data) return;
 
-                const response: { amount: number; friend: string }[] = Object.values(data.data.data);
+            const response: { amount: number; friend: string }[] = Object.values(data.data.data);
 
-                setTopCashFlowPartners(response.map((val: { amount: number, friend: string }, index: number) => ({
-                    id: index,
-                    value: val.amount,
-                    label: val.friend,
-                    color: pieChartColors[index]
-                })));
-
-            } catch (error) {
-                toast.error("Something went wrong, please try again later!");
-            } finally {
-                setLoaders((prev) => ({ ...prev, cashFlowPartners: false }));
-            }
+            setTopCashFlowPartners(response.map((val: { amount: number, friend: string }, index: number) => ({
+                id: index,
+                value: val.amount,
+                label: val.friend,
+                color: pieChartColors[index]
+            })));
         }
         const getCashFlowGroups = async () => {
-            try {
-                const data = await handleCashFlowGroups();
+            const data = await handleCashFlowGroups();
+            setLoaders((prev) => ({ ...prev, cashFlowGroups: false }));
+            if (!data) return;
 
-                const response: { amount: number; group: string }[] = Object.values(data.data.data);
+            const response: { amount: number; group: string }[] = Object.values(data.data.data);
 
-                setTopCashFlowGroups(response.map((val: { amount: number, group: string }, index: number) => ({
-                    id: index,
-                    value: val.amount,
-                    label: val.group,
-                    color: pieChartColors[index]
-                })));
-
-            } catch (error) {
-                toast.error("Something went wrong, please try again later!");
-            } finally {
-                setLoaders((prev) => ({ ...prev, cashFlowGroups: false }));
-            }
+            setTopCashFlowGroups(response.map((val: { amount: number, group: string }, index: number) => ({
+                id: index,
+                value: val.amount,
+                label: val.group,
+                color: pieChartColors[index]
+            })));
         }
         getExpensesCount()
         getBalance()
@@ -131,14 +110,10 @@ const DashboardPage = () => {
     }, [])
     useEffect(() => {
         const getMonthlyexpenses = async () => {
-            try {
-                const data = await handleMonthlyExpenses(year);
-                setMonthlyExpenses(data.data.data);
-            } catch (error) {
-                toast.error("Something went wrong, please try again later!");
-            } finally {
-                setLoaders((prev) => ({ ...prev, monthlyExpenses: false }));
-            }
+            const data = await handleMonthlyExpenses(year);
+            setLoaders((prev) => ({ ...prev, monthlyExpenses: false }));
+            if (!data) return;
+            setMonthlyExpenses(data.data.data);
         }
         getMonthlyexpenses();
     }, [year])

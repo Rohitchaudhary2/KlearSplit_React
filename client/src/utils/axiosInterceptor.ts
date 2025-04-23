@@ -8,6 +8,20 @@ const axiosInstance = axios.create({
   withCredentials: true,
 });
 
+const getErrorMessage = (status: number, error: any): string => {
+  const defaultMessages: Record<number, string> = {
+      400: error?.message || "Bad Request",
+      401: "Unauthorized",
+      403: error?.message || "You do not have permission to perform this action.",
+      404: error?.message || "The requested resource was not found.",
+      410: error?.message || "Account deleted, please restore it.",
+      500: "Something went wrong. Please try again later.",
+      503: "Service unavailable. Please try again later.",
+  };
+
+  return defaultMessages[status] || error?.message || "Something went wrong. Please try again.";
+};
+
 // Axios interceptor to catch 401 Unauthorized errors
 axiosInstance.interceptors.response.use(
   (response) => response, // Just return the response if no error
@@ -33,13 +47,9 @@ axiosInstance.interceptors.response.use(
             return;
           }
     }
-    if(store.getState().auth.isAuthenticated) {
-      toast.error(response.data.message)
-    }
+    const errorMessage = getErrorMessage(response.status, response.data);
+    if(response.status !== 401) toast.error(errorMessage);
     return;
-
-    // Re-throw the error to be handled elsewhere in your application if necessary
-    // return Promise.reject(error.response.data);
   }
 );
 

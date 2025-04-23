@@ -2,16 +2,18 @@ import './App.css'
 import { RouterProvider } from 'react-router-dom'
 import router from './routes/routes'
 import { useEffect, useState } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { login } from './store/authSlice'
 import { Box } from '@mui/material'
 import HashLoader from "react-spinners/ClipLoader";
 import { API_URLS } from './constants/apiUrls'
 import axiosInstance from './utils/axiosInterceptor'
 import { toast } from 'sonner'
+import { RootState } from './store'
 
 function App() {
   const [loading, setLoading] = useState(true);
+  const user = useSelector((store: RootState) => store.auth.user)
   const dispatch = useDispatch();
   useEffect(() => {
     const getUser = async () => {
@@ -20,7 +22,7 @@ function App() {
 
         dispatch(login(user.data.data)); // Dispatch the user data to the store
       } catch (error) {
-        toast.error("Failed to fetch user data. Please try again later.");
+        if(user) toast.error("Failed to fetch user data. Please try again later.");
       }
       setLoading(false);
     }
